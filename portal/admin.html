@@ -401,8 +401,10 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     var kv = function (label, value) { return el("div", null, el("span", { class: "label", text: label }), el("code", { text: value })); };
     var w = cfg.worker_last_run;
     app.appendChild(el("section", { class: "panel" }, el("h1", { text: "Configuração" }),
-      el("div", { class: "notice" + (cfg.ig_configured ? "" : " warn"), text: cfg.ig_configured ? "Instagram configurado: os clientes já podem conectar a conta."
+      el("div", { class: "notice" + (cfg.ig_configured && cfg.ig_login_config_id ? "" : " warn"), text: cfg.ig_configured && cfg.ig_login_config_id
+        ? "Instagram configurado com Facebook Login for Business (configuração " + cfg.ig_login_config_id + "). Os clientes já podem conectar a conta."
         : "Instagram ainda não configurado. Crie o app na Meta, cadastre os endereços abaixo e salve IG_APP_ID e IG_APP_SECRET nos segredos da Edge Function no Supabase." }),
+      cfg.ig_last_oauth_error ? el("div", { class: "notice bad", text: "Última falha de conexão (" + date(cfg.ig_last_oauth_error.at) + "): " + cfg.ig_last_oauth_error.reason + ". " + cfg.ig_last_oauth_error.detail }) : null,
       el("h2", { text: "Endereços para o app da Meta" }),
       el("div", { class: "kv" }, kv("URI de redirecionamento do OAuth", cfg.oauth_redirect_uri), kv("URL de retorno de desautorização", cfg.deauthorize_url), kv("URL de solicitação de exclusão de dados", cfg.data_deletion_url)),
       el("h2", { text: "Portal e automação" }),

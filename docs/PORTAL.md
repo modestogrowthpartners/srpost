@@ -28,22 +28,27 @@ Portal onde o cliente aprova os criativos arrastando (direita aprova, esquerda r
 - Painel e ingestão usam chaves (`srp_adm_...` e `srp_ing_...`) guardadas como hash. Crie uma chave por pessoa ou sistema e revogue quando precisar (Painel > Configuração).
 - O bucket `creatives` é público porque o Instagram precisa baixar a mídia por URL. Os caminhos têm UUID aleatório.
 
-## Configurar a conexão com o Instagram (API nativa da Meta)
+## Conexão com o Instagram (Facebook Login for Business)
 
-Sem este passo o portal funciona, mas o botão "Conectar Instagram" fica como "em liberação" e nada é publicado.
+O app da Meta do Sr. Post (ID `1014813347720716`) usa o login unificado: o cliente entra com o Facebook, libera a Página e o Instagram profissional ligado a ela, e a API publica com o token da Página (`graph.facebook.com`).
 
-1. Em developers.facebook.com, crie um app do tipo **Business**.
-2. Adicione o produto **Instagram** e escolha **API setup with Instagram business login**.
-3. Nas configurações de Business login, cadastre os três endereços que aparecem em Painel > Configuração:
-   - URI de redirecionamento do OAuth: `https://qmmhqhebxynycjxqxber.supabase.co/functions/v1/api/instagram/callback`
-   - URL de desautorização: `.../api/instagram/deauthorize`
-   - URL de exclusão de dados: `.../api/instagram/data-deletion`
-4. Copie o **Instagram App ID** e o **Instagram App Secret** (ficam na tela do produto Instagram; confira se são os do Instagram, não os do app Meta).
-5. No Supabase: Edge Functions > Secrets. Crie `IG_APP_ID` e `IG_APP_SECRET`.
-6. Enquanto o app estiver em modo de desenvolvimento, só contas com papel no app conseguem conectar. Em Funções do app, adicione cada conta do Instagram como **Instagram Tester** e peça para o dono aceitar o convite no próprio Instagram.
-7. Para liberar qualquer cliente, envie o app para **App Review** pedindo acesso avançado a `instagram_business_basic`, `instagram_business_content_publish` e `instagram_business_manage_insights`. A Meta pede verificação da empresa, política de privacidade publicada e um vídeo mostrando o fluxo.
+O que precisa estar configurado:
 
-Permissões usadas: `instagram_business_basic`, `instagram_business_content_publish`, `instagram_business_manage_insights`. A versão da API é `v27.0` por padrão; para mudar, crie o segredo `IG_API_VERSION`.
+1. **Segredos da Edge Function** (Supabase > Edge Functions > Secrets): `IG_APP_ID` e `IG_APP_SECRET`, com o ID e a chave secreta do app da Meta.
+2. **Configuração de login** (Facebook Login for Business > Configurations): o ID fica na tabela `settings`, chave `ig_login_config_id` (hoje `1724468293011778`). Para trocar sem redeploy, atualize essa linha ou crie o segredo `IG_LOGIN_CONFIG_ID`.
+3. **Permissões da configuração de login**: `instagram_basic`, `instagram_content_publish`, `pages_show_list` e `pages_read_engagement` são obrigatórias (sem elas a conexão é recusada com o motivo "permissoes"). `instagram_manage_insights` é necessária para as métricas dos posts.
+4. **URLs cadastradas na Meta** (aparecem em Painel > Configuração):
+   - Redirecionamento OAuth válido: `https://qmmhqhebxynycjxqxber.supabase.co/functions/v1/api/instagram/callback`
+   - Desautorização: `.../api/instagram/deauthorize`
+   - Exclusão de dados: `.../api/instagram/data-deletion`
+
+Requisitos do cliente: Instagram profissional (Empresa ou Criador) ligado a uma Página do Facebook que ele administra. Se a Página exigir Autorização de Publicação da Página (PPA), ela precisa estar concluída.
+
+Enquanto o app estiver em modo de desenvolvimento, só pessoas com papel no app (administrador, desenvolvedor ou testador) conseguem conectar. Para liberar qualquer cliente, o app precisa de acesso avançado às permissões acima via App Review (verificação da empresa, política de privacidade publicada e vídeo do fluxo).
+
+Se o cliente liberar mais de uma conta no login, o portal conecta a primeira e avisa. Para escolher outra, ele desconecta e refaz o login marcando só a conta desejada.
+
+Diagnóstico: a última falha de conexão fica registrada e aparece em Painel > Configuração. A versão da API é `v27.0` por padrão; para mudar, crie o segredo `IG_API_VERSION`.
 
 ## API de ingestão (n8n ou agente gerador)
 

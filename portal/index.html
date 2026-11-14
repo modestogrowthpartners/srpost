@@ -422,11 +422,17 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     history.replaceState(null, "", location.pathname);
     if (del) { toast("Pedido de exclusão de dados registrado. Código: " + del, { ms: 15000 }); return; }
     show("agente");
-    if (ig === "ok") toast("Instagram conectado. Os posts aprovados já podem ir ao ar.");
-    else {
-      var why = { negado: "Você cancelou a autorização no Instagram.", expirado: "O pedido de conexão expirou. Tente de novo.",
-        configuracao: "A conexão ainda não está liberada.", instagram: "O Instagram recusou a conexão. Confira se a conta é profissional e tente de novo." };
-      toast(why[q.get("motivo")] || "Não foi possível conectar o Instagram. Tente de novo.", { bad: true, ms: 9000 });
+    if (ig === "ok") {
+      var acc = S.data.instagram.account, many = Number(q.get("contas")) > 1;
+      toast(many ? "Conectamos @" + ((acc && acc.username) || "sua conta") + ". Você liberou mais de uma conta: para usar outra, desconecte e refaça o login marcando só a conta desejada."
+        : "Instagram conectado. Os posts aprovados já podem ir ao ar.", { ms: many ? 14000 : 6000 });
+    } else {
+      var why = { negado: "Você cancelou a autorização.", expirado: "O pedido de conexão expirou. Tente de novo.",
+        configuracao: "A conexão ainda não está liberada.",
+        sem_conta: "Não encontramos um Instagram profissional ligado a uma Página do Facebook. No login, marque a Página e a conta do Instagram que quer conectar.",
+        permissoes: "Faltou liberar alguma permissão no login. Tente de novo e mantenha todas as permissões marcadas.",
+        instagram: "A Meta recusou a conexão. Confira se o Instagram é profissional e está ligado a uma Página do Facebook, e tente de novo." };
+      toast(why[q.get("motivo")] || "Não foi possível conectar o Instagram. Tente de novo.", { bad: true, ms: 14000 });
     }
   }
 
@@ -786,7 +792,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       if (acc.profile_picture_url) { var im = el("img", { src: acc.profile_picture_url, alt: "" }); im.onerror = function () { av.textContent = "@"; }; av.appendChild(im); } else av.textContent = "@";
       host.appendChild(el("div", { class: "who" }, av,
         el("div", { style: "display:grid;gap:2px;min-width:0" }, el("b", { text: "@" + (acc.username || "conta") }),
-          el("span", { class: "muted", style: "font-size:0.82rem", text: (acc.followers_count != null ? n(acc.followers_count) + " seguidores" : "Conta profissional") })),
+          el("span", { class: "muted", style: "font-size:0.82rem", text: (acc.followers_count != null ? n(acc.followers_count) + " seguidores" : "Conta profissional") + (acc.page_name ? " · Página " + acc.page_name : "") })),
         el("span", { class: "pill live", style: "margin-left:auto", text: "Conectado" })));
       host.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Os posts aprovados são publicados nesta conta no horário combinado. A conexão é renovada automaticamente" + (acc.token_expires_at ? " (válida até " + fmtDate(acc.token_expires_at).split(",")[0] + ")." : ".") }));
       var box = el("div", { class: "confirm" });
@@ -804,19 +810,19 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     }
     var expired = acc && acc.status === "expired";
     host.appendChild(el("p", { text: expired ? "A conexão com @" + (acc.username || "sua conta") + " expirou. Reconecte para o agente voltar a publicar."
-      : "Conecte a conta onde o agente vai publicar. Você entra direto no Instagram e autoriza: o Sr. Post nunca vê sua senha." }));
+      : "Conecte a conta onde o agente vai publicar. Você entra com o Facebook que administra a Página ligada ao seu Instagram e autoriza: o Sr. Post nunca vê sua senha." }));
     if (ig.available) {
       var btn = el("button", { class: "btn", type: "button", text: expired ? "Reconectar Instagram" : "Conectar Instagram", onclick: function () {
-        btn.disabled = true; btn.textContent = "Abrindo o Instagram...";
+        btn.disabled = true; btn.textContent = "Abrindo o login da Meta...";
         api("POST", "/instagram/start").then(function (r) { location.href = r.authorize_url; })
-          .catch(function (e) { btn.disabled = false; btn.textContent = "Conectar Instagram"; toast(e.message, { bad: true }); });
+          .catch(function (e) { btn.disabled = false; btn.textContent = expired ? "Reconectar Instagram" : "Conectar Instagram"; toast(e.message, { bad: true }); });
       } });
       host.appendChild(btn);
     } else {
       host.appendChild(el("div", { class: "notice" }, el("span", { text: "A conexão com o Instagram está em liberação. O time do Sr. Post avisa quando você puder conectar. Enquanto isso, pode aprovar normalmente: os posts ficam agendados." })));
     }
     var req = el("ul", { style: "display:grid;gap:6px;font-size:0.85rem;color:var(--muted)" });
-    ["A conta precisa ser profissional (Empresa ou Criador de conteúdo).", "O agente só publica o que você aprovar aqui.", "Você pode desconectar quando quiser."].forEach(function (t) { req.appendChild(el("li", { text: "· " + t })); });
+    ["O Instagram precisa ser profissional (Empresa ou Criador de conteúdo).", "Ele precisa estar ligado a uma Página do Facebook que você administra.", "No login, marque a Página e a conta do Instagram e mantenha as permissões.", "O agente só publica o que você aprovar aqui."].forEach(function (t) { req.appendChild(el("li", { text: "· " + t })); });
     host.appendChild(field("Antes de conectar", req));
   }
 

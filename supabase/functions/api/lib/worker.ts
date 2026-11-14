@@ -116,22 +116,23 @@ async function maintainAccounts(sum: Summary) {
     .eq("platform", "instagram").eq("status", "connected").limit(200);
   for (const a of (accounts ?? []) as Account[]) {
     try {
-      const exp = a.token_expires_at ? new Date(a.token_expires_at).getTime() : 0;
+      const exp = a.token_expires_at ? new Date(a.token_expires_at).getTime() : 0; // 0 = token de Pagina sem validade
       const issued = a.token_issued_at ? new Date(a.token_issued_at).getTime() : 0;
       if (exp && exp < now) { await markExpired(a.id, "Token expirado."); continue; }
-      const token = await tokenFor(a.id);
-      if (exp - now < 10 * 86_400_000 && now - issued > 24 * 3_600_000) {
-        const r = await ig.refreshToken(token);
+      let token = await tokenFor(a.id);
+      const appId = Deno.env.get("IG_APP_ID"), secret = Deno.env.get("IG_APP_SECRET");
+      if (exp && appId && secret && exp - now < 10 * 86_400_000 && now - issued > 24 * 3_600_000) {
+        const r = await ig.extendToken(appId, secret, token);
         must(await db.rpc("ig_token_store", { p_account_id: a.id, p_token: r.token }));
-        tokens.set(a.id, r.token);
+        tokens.set(a.id, r.token); token = r.token;
         await db.from("social_accounts").update({
           token_issued_at: new Date().toISOString(),
-          token_expires_at: new Date(now + r.expiresIn * 1000).toISOString(),
+          token_expires_at: r.expiresIn ? new Date(now + r.expiresIn * 1000).toISOString() : null,
         }).eq("id", a.id);
         sum.tokens_refreshed = (sum.tokens_refreshed as number) + 1;
       }
       if (now - new Date(a.updated_at).getTime() > 24 * 3_600_000) {
-        const p = await ig.me(tokens.get(a.id) ?? token);
+        const p = await ig.profile(a.external_id, token);
         await db.from("social_accounts").update({
           username: p.username ?? undefined, name: p.name ?? undefined,
           profile_picture_url: p.profile_picture_url ?? undefined,

@@ -1,13 +1,13 @@
-// Cliente da Instagram API com Instagram Login (graph.instagram.com).
-// Referencia: developers.facebook.com/docs/instagram-platform
+// Instagram API com Facebook Login for Business (graph.facebook.com).
+// O cliente entra pelo Facebook, concede acesso a Pagina vinculada ao Instagram profissional e
+// usamos o token da Pagina para publicar e ler metricas.
+// Referencia: developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login
 const VERSION = Deno.env.get("IG_API_VERSION") ?? "v27.0";
-const GRAPH = `https://graph.instagram.com/${VERSION}`;
+const GRAPH = `https://graph.facebook.com/${VERSION}`;
 
-export const IG_SCOPES = [
-  "instagram_business_basic",
-  "instagram_business_content_publish",
-  "instagram_business_manage_insights",
-];
+// Permissoes que a configuracao de login (config_id) precisa conceder.
+export const REQUIRED_PERMISSIONS = ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement"];
+export const OPTIONAL_PERMISSIONS = ["instagram_manage_insights"];
 
 export class IgError extends Error {
   constructor(message: string, public status: number, public code?: number, public subcode?: number) {
@@ -20,10 +20,10 @@ async function parse(res: Response) {
   const text = await res.text();
   let body: any = null;
   try { body = JSON.parse(text); } catch (_) { /* resposta nao JSON */ }
-  if (!res.ok || body?.error || body?.error_type) {
+  if (!res.ok || body?.error) {
     const e = body?.error ?? {};
-    const msg = e.error_user_msg || e.message || body?.error_message || text.slice(0, 300) || `HTTP ${res.status}`;
-    throw new IgError(String(msg), res.status, e.code ?? body?.code, e.error_subcode);
+    const msg = e.error_user_msg || e.message || text.slice(0, 300) || `HTTP ${res.status}`;
+    throw new IgError(String(msg), res.status, e.code, e.error_subcode);
   }
   return body;
 }
@@ -38,35 +38,75 @@ async function post(path: string, params: Record<string, string>, token: string)
   return parse(await fetch(`${GRAPH}${path}`, { method: "POST", body }));
 }
 
-export function authorizeUrl(appId: string, redirectUri: string, state: string): string {
+export function authorizeUrl(appId: string, configId: string, redirectUri: string, state: string): string {
   const qs = new URLSearchParams({
-    client_id: appId, redirect_uri: redirectUri, response_type: "code",
-    scope: IG_SCOPES.join(","), state, force_reauth: "true",
+    client_id: appId, redirect_uri: redirectUri, config_id: configId,
+    response_type: "code", override_default_response_type: "true", state,
   });
-  return `https://www.instagram.com/oauth/authorize?${qs}`;
+  return `https://www.facebook.com/${VERSION}/dialog/oauth?${qs}`;
 }
 
+// Troca o code por um token e tenta estende-lo. `durable` indica que os tokens de Pagina derivados nao expiram:
+// vale para token de usuario de longa duracao e para token de usuario de sistema (que ja nasce sem validade).
 export async function exchangeCode(appId: string, secret: string, redirectUri: string, code: string) {
-  const body = new URLSearchParams({
-    client_id: appId, client_secret: secret, grant_type: "authorization_code", redirect_uri: redirectUri, code,
-  });
-  const short = await parse(await fetch("https://api.instagram.com/oauth/access_token", { method: "POST", body }));
-  const s = Array.isArray(short?.data) ? short.data[0] : short;
-  if (!s?.access_token) throw new IgError("Resposta sem access_token.", 500);
-  const qs = new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: secret, access_token: s.access_token });
-  const long = await parse(await fetch(`https://graph.instagram.com/access_token?${qs}`));
-  const perms: string[] = Array.isArray(s.permissions) ? s.permissions : String(s.permissions ?? "").split(",").filter(Boolean);
-  return { token: long.access_token as string, expiresIn: Number(long.expires_in ?? 5184000), permissions: perms };
+  const qs = new URLSearchParams({ client_id: appId, client_secret: secret, redirect_uri: redirectUri, code });
+  const first = await parse(await fetch(`${GRAPH}/oauth/access_token?${qs}`));
+  if (!first?.access_token) throw new IgError("Resposta sem access_token.", 500);
+  let token = String(first.access_token);
+  let expiresIn: number | null = typeof first.expires_in === "number" ? first.expires_in : null;
+  let durable = expiresIn === null;
+  try {
+    const r = await extendToken(appId, secret, token);
+    token = r.token; expiresIn = r.expiresIn; durable = true;
+  } catch (_) { /* token de usuario de sistema nao passa por esta troca */ }
+  return { token, expiresIn, durable };
 }
 
-export async function refreshToken(token: string) {
-  const qs = new URLSearchParams({ grant_type: "ig_refresh_token", access_token: token });
-  const r = await parse(await fetch(`https://graph.instagram.com/refresh_access_token?${qs}`));
-  return { token: r.access_token as string, expiresIn: Number(r.expires_in ?? 5184000) };
+export async function extendToken(appId: string, secret: string, token: string) {
+  const qs = new URLSearchParams({ grant_type: "fb_exchange_token", client_id: appId, client_secret: secret, fb_exchange_token: token });
+  const r = await parse(await fetch(`${GRAPH}/oauth/access_token?${qs}`));
+  if (!r?.access_token) throw new IgError("Resposta sem access_token.", 500);
+  return { token: String(r.access_token), expiresIn: typeof r.expires_in === "number" ? r.expires_in as number : null };
 }
 
-export function me(token: string) {
-  return get("/me", { fields: "user_id,username,name,account_type,profile_picture_url,followers_count" }, token);
+// Permissoes concedidas; null quando o tipo de token nao permite consultar.
+export async function grantedPermissions(token: string): Promise<string[] | null> {
+  try {
+    const r = await get("/me/permissions", {}, token);
+    return (r?.data ?? []).filter((p: any) => p.status === "granted").map((p: any) => String(p.permission));
+  } catch (_) { return null; }
+}
+
+export async function fbUserId(token: string): Promise<string | null> {
+  try { return String((await get("/me", { fields: "id" }, token)).id); } catch (_) { return null; }
+}
+
+export type IgAccount = {
+  igId: string; username: string | null; name: string | null; picture: string | null; followers: number | null;
+  pageId: string; pageName: string | null; pageToken: string | null;
+};
+
+// Contas profissionais do Instagram ligadas as Paginas que a pessoa liberou no login.
+export async function listInstagramAccounts(token: string): Promise<IgAccount[]> {
+  const r = await get("/me/accounts", {
+    fields: "id,name,access_token,instagram_business_account{id,username,name,profile_picture_url,followers_count}",
+    limit: "100",
+  }, token);
+  const out: IgAccount[] = [];
+  for (const p of r?.data ?? []) {
+    const ig = p.instagram_business_account;
+    if (!ig?.id) continue;
+    out.push({
+      igId: String(ig.id), username: ig.username ?? null, name: ig.name ?? null, picture: ig.profile_picture_url ?? null,
+      followers: typeof ig.followers_count === "number" ? ig.followers_count : null,
+      pageId: String(p.id), pageName: p.name ?? null, pageToken: p.access_token ?? null,
+    });
+  }
+  return out;
+}
+
+export function profile(igUserId: string, token: string) {
+  return get(`/${igUserId}`, { fields: "username,name,profile_picture_url,followers_count" }, token);
 }
 
 export type PublishInput = {

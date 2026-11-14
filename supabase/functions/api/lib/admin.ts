@@ -24,13 +24,15 @@ function agentPatch(a: Record<string, unknown> | undefined) {
 }
 
 async function overview() {
-  const [clients, creatives, posts, worker] = await Promise.all([
+  const [clients, creatives, posts, worker, igError, configId] = await Promise.all([
     db.from("clients").select(`id, name, slug, segment, status, is_demo, created_at,
       agents ( name, status, posts_per_week, post_times ),
       social_accounts ( username, status, followers_count, token_expires_at, last_error )`).order("created_at"),
     db.from("creatives").select("client_id, status").limit(10000),
     db.from("posts").select("client_id, status").limit(10000),
     getSetting("worker_last_run"),
+    getSetting("ig_last_oauth_error"),
+    getSetting("ig_login_config_id"),
   ]);
   const counts: Record<string, Record<string, number>> = {};
   const bump = (id: string, k: string) => { (counts[id] ??= {})[k] = (counts[id][k] ?? 0) + 1; };
@@ -48,6 +50,8 @@ async function overview() {
       data_deletion_url: `${FUNCTIONS_BASE}/instagram/data-deletion`,
       ingest_base: `${FUNCTIONS_BASE}/ingest`,
       worker_last_run: worker ? JSON.parse(worker) : null,
+      ig_login_config_id: Deno.env.get("IG_LOGIN_CONFIG_ID") ?? configId,
+      ig_last_oauth_error: igError ? JSON.parse(igError) : null,
     },
   });
 }
@@ -85,7 +89,7 @@ async function clientDetail(id: string) {
   const [client, links, creatives] = await Promise.all([
     db.from("clients").select(`id, name, slug, segment, status, timezone, is_demo,
       agents ( name, role_line, bio, tone, pillars, posts_per_week, post_times, platforms, status ),
-      social_accounts ( username, name, status, followers_count, account_type, token_expires_at, connected_at, last_error )`).eq("id", id).maybeSingle(),
+      social_accounts ( username, name, status, followers_count, account_type, token_expires_at, connected_at, last_error, page_name )`).eq("id", id).maybeSingle(),
     db.from("portal_links").select("id, label, created_at, expires_at, revoked_at, last_used_at").eq("client_id", id).order("created_at", { ascending: false }),
     db.from("creatives").select(`id, kind, format, media_url, thumb_url, title, caption, hashtags, ai_generated, suggested_at,
       status, decision_comment, decided_at, revision_of, source, created_at,

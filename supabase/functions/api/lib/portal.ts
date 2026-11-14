@@ -1,12 +1,12 @@
 // Rotas do portal do cliente (autenticadas pelo link magico).
-import { authPortal, ClientRow, db, FUNCTIONS_BASE, HttpError, igConfigured, isUuid, json, must, one, randomToken, readJson, str } from "./core.ts";
+import { authPortal, ClientRow, db, FUNCTIONS_BASE, getSetting, HttpError, igConfigured, isUuid, json, must, one, randomToken, readJson, str } from "./core.ts";
 import { authorizeUrl } from "./instagram.ts";
 
 const CREATIVE_FIELDS = "id, kind, format, media_url, thumb_url, title, caption, hashtags, suggested_at, created_at, revision_of";
 
 async function instagramState(clientId: string) {
   const { data: acc } = await db.from("social_accounts")
-    .select("username, name, profile_picture_url, account_type, followers_count, status, token_expires_at, connected_at, last_error")
+    .select("username, name, profile_picture_url, account_type, followers_count, status, token_expires_at, connected_at, last_error, page_name")
     .eq("client_id", clientId).eq("platform", "instagram").maybeSingle();
   return { available: igConfigured(), connected: acc?.status === "connected", account: acc ?? null };
 }
@@ -103,10 +103,14 @@ async function instagramStart(client: ClientRow) {
   if (!igConfigured() || !appId) {
     throw new HttpError(503, "ig_not_configured", "A conexão com o Instagram ainda está sendo liberada pelo Sr. Post.");
   }
+  const configId = Deno.env.get("IG_LOGIN_CONFIG_ID") ?? await getSetting("ig_login_config_id");
+  if (!configId) {
+    throw new HttpError(503, "ig_not_configured", "A conexão com o Instagram ainda está sendo liberada pelo Sr. Post.");
+  }
   const state = randomToken(32);
   must(await db.from("oauth_states").insert({ state, client_id: client.id }));
   await db.from("oauth_states").delete().lt("expires_at", new Date().toISOString());
-  return json({ authorize_url: authorizeUrl(appId, `${FUNCTIONS_BASE}/instagram/callback`, state) });
+  return json({ authorize_url: authorizeUrl(appId, configId, `${FUNCTIONS_BASE}/instagram/callback`, state) });
 }
 
 async function instagramDisconnect(client: ClientRow) {
