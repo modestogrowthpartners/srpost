@@ -83,26 +83,62 @@ export async function fbUserId(token: string): Promise<string | null> {
 
 export type IgAccount = {
   igId: string; username: string | null; name: string | null; picture: string | null; followers: number | null;
-  pageId: string; pageName: string | null; pageToken: string | null;
+  pageId: string | null; pageName: string | null; pageToken: string | null;
 };
 
-// Contas profissionais do Instagram ligadas as Paginas que a pessoa liberou no login.
-export async function listInstagramAccounts(token: string): Promise<IgAccount[]> {
-  const r = await get("/me/accounts", {
-    fields: "id,name,access_token,instagram_business_account{id,username,name,profile_picture_url,followers_count}",
-    limit: "100",
-  }, token);
-  const out: IgAccount[] = [];
-  for (const p of r?.data ?? []) {
-    const ig = p.instagram_business_account;
-    if (!ig?.id) continue;
-    out.push({
-      igId: String(ig.id), username: ig.username ?? null, name: ig.name ?? null, picture: ig.profile_picture_url ?? null,
-      followers: typeof ig.followers_count === "number" ? ig.followers_count : null,
-      pageId: String(p.id), pageName: p.name ?? null, pageToken: p.access_token ?? null,
+const IG_FIELDS = "id,username,name,profile_picture_url,followers_count";
+
+function fromIgNode(ig: any, page?: any): IgAccount {
+  return {
+    igId: String(ig.id), username: ig.username ?? null, name: ig.name ?? null, picture: ig.profile_picture_url ?? null,
+    followers: typeof ig.followers_count === "number" ? ig.followers_count : null,
+    pageId: page?.id ? String(page.id) : null, pageName: page?.name ?? null, pageToken: page?.access_token ?? null,
+  };
+}
+
+// Contas profissionais do Instagram que a pessoa ou a empresa liberou no login. Tenta, nesta ordem:
+//   1. me/accounts                       token de usuario: Paginas com Instagram vinculado
+//   2. me/assigned_pages                 token de usuario de sistema: Paginas atribuidas
+//   3. me/assigned_instagram_accounts    token de usuario de sistema: contas do Instagram atribuidas, com ou sem Pagina
+//   4. <portfolio>/instagram_business_accounts   contas do portfolio empresarial do cliente
+// `trace` registra o que cada consulta devolveu, para diagnostico no painel.
+export async function listInstagramAccounts(token: string): Promise<{ accounts: IgAccount[]; trace: string }> {
+  const found = new Map<string, IgAccount>();
+  const trace: string[] = [];
+  const add = (a: IgAccount) => {
+    const cur = found.get(a.igId);
+    if (!cur || (!cur.pageToken && a.pageToken)) found.set(a.igId, { ...cur, ...a, username: a.username ?? cur?.username ?? null });
+  };
+  const step = async (label: string, fn: () => Promise<number>) => {
+    try { trace.push(`${label}: ${await fn()}`); }
+    catch (e) { trace.push(`${label}: erro (${e instanceof Error ? e.message.slice(0, 90) : e})`); }
+  };
+  const pageFields = `id,name,access_token,instagram_business_account{${IG_FIELDS}}`;
+  const pages = (edge: string) => async () => {
+    const r = await get(edge, { fields: pageFields, limit: "100" }, token);
+    let n = 0;
+    for (const p of r?.data ?? []) if (p.instagram_business_account?.id) { add(fromIgNode(p.instagram_business_account, p)); n++; }
+    return n;
+  };
+  const igEdge = (edge: string) => async () => {
+    let r: any;
+    try { r = await get(edge, { fields: IG_FIELDS, limit: "100" }, token); }
+    catch (_) { r = await get(edge, { fields: "id,username", limit: "100" }, token); }
+    let n = 0;
+    for (const ig of r?.data ?? []) if (ig?.id) { add(fromIgNode(ig)); n++; }
+    return n;
+  };
+  await step("me/accounts", pages("/me/accounts"));
+  await step("me/assigned_pages", pages("/me/assigned_pages"));
+  await step("me/assigned_instagram_accounts", igEdge("/me/assigned_instagram_accounts"));
+  if (!found.size) {
+    await step("portfolio/instagram_business_accounts", async () => {
+      const me = await get("/me", { fields: "client_business_id" }, token);
+      if (!me?.client_business_id) return 0;
+      return igEdge(`/${me.client_business_id}/instagram_business_accounts`)();
     });
   }
-  return out;
+  return { accounts: [...found.values()], trace: trace.join("; ") };
 }
 
 export function profile(igUserId: string, token: string) {
