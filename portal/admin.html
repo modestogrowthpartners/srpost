@@ -138,6 +138,24 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     } });
   }
   var FORMAT = { reel: "Reel", feed: "Feed", story: "Story" };
+  var NET = { instagram: "Instagram", tiktok: "TikTok" };
+  function kindLabel(c) { return c.kind === "carousel" ? "Carrossel (" + ((c.media || []).length) + ")" : (FORMAT[c.format] || c.format); }
+  function netChecks(selected) {
+    var boxes = {}, wrap = el("div", { style: "display:flex;flex-wrap:wrap;gap:6px 16px" });
+    ["instagram", "tiktok"].forEach(function (p) {
+      boxes[p] = el("input", { type: "checkbox", checked: (selected || ["instagram"]).indexOf(p) >= 0 });
+      wrap.appendChild(el("label", { class: "check" }, boxes[p], NET[p]));
+    });
+    return { node: wrap, value: function () { return ["instagram", "tiktok"].filter(function (p) { return boxes[p].checked; }); } };
+  }
+  function accountPills(list) {
+    var out = [];
+    ["instagram", "tiktok"].forEach(function (p) {
+      var a = (list || []).filter(function (x) { return x.platform === p; })[0];
+      out.push(el("span", { class: "pill" + (a && a.status === "connected" ? " ok" : a ? " no" : ""), text: a && a.status === "connected" ? NET[p] + ": @" + (a.username || "conta") : a ? NET[p] + " expirado" : "Sem " + NET[p] }));
+    });
+    return out;
+  }
 
   // ---------- acesso ----------
   function logout() { KEY = ""; try { localStorage.removeItem(STORE); } catch (e) {} document.getElementById("navbar").hidden = true; gate(); }
@@ -172,23 +190,26 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
       posts_per_week: el("input", { type: "number", min: "1", max: "28", value: String(a.posts_per_week || 7) }),
       status: el("select", null, el("option", { value: "ativo", text: "Ativo" }), el("option", { value: "configurando", text: "Em configuração" }), el("option", { value: "pausado", text: "Pausado" }))
     };
+    var nets = netChecks(a.platforms);
     f.status.value = a.status || "ativo";
     var nodes = [field("Nome do agente", f.name), field("Descrição curta", f.role_line), field("Posts por semana", f.posts_per_week), field("Status", f.status),
       field("Horários de publicação (HH:MM, separados por vírgula)", f.post_times), field("Temas (separados por vírgula)", f.pillars),
+      el("div", { class: "f" }, el("span", { class: "label", text: "Redes onde publica (padrão dos criativos)" }), nets.node),
       field("O que o agente faz", f.bio, true), field("Tom de voz", f.tone, true)];
     return { nodes: nodes, value: function () {
       var split = function (v) { return v.split(",").map(function (s) { return s.trim(); }).filter(Boolean); };
       return { name: f.name.value, role_line: f.role_line.value, bio: f.bio.value, tone: f.tone.value, pillars: split(f.pillars.value),
-        post_times: split(f.post_times.value), posts_per_week: Number(f.posts_per_week.value) || 7, status: f.status.value };
+        post_times: split(f.post_times.value), posts_per_week: Number(f.posts_per_week.value) || 7, status: f.status.value, platforms: nets.value() };
     } };
   }
   function renderClients(o) {
     app.textContent = "";
     if (!o.config.ig_configured) app.appendChild(el("div", { class: "notice warn" }, "A conexão com o Instagram ainda não está configurada: falta cadastrar IG_APP_ID e IG_APP_SECRET. Veja em Configuração. Os clientes já podem aprovar; os posts ficam agendados."));
+    if (o.config.tiktok_configured === false) app.appendChild(el("div", { class: "notice warn" }, "A conexão com o TikTok ainda não está ativa: falta cadastrar UPLOAD_POST_API_KEY. Veja em Configuração. Os posts de TikTok aprovados ficam agendados até lá."));
     var list = el("div", { class: "rows" });
     if (!o.clients.length) list.appendChild(el("p", { class: "muted", text: "Nenhum cliente ainda. Cadastre o primeiro abaixo." }));
     o.clients.forEach(function (c) {
-      var k = c.counts || {}, ig = c.instagram;
+      var k = c.counts || {};
       list.appendChild(el("button", { class: "row", type: "button", onclick: function () { loadClient(c.id); } },
         el("span", { class: "main" }, el("b", { text: c.name + (c.is_demo ? " (demonstração)" : "") }), el("span", { class: "muted", text: (c.segment || "Sem segmento") + " · " + c.slug })),
         el("span", { class: "side" },
@@ -196,8 +217,9 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
           k.adjust ? el("span", { class: "pill fix", text: k.adjust + " em ajuste" }) : null,
           el("span", { class: "pill", text: (k.post_scheduled || 0) + " agendados" }),
           el("span", { class: "pill ok", text: (k.post_published || 0) + " publicados" }),
-          k.post_failed ? el("span", { class: "pill no", text: k.post_failed + " com falha" }) : null,
-          el("span", { class: "pill" + (ig && ig.status === "connected" ? " ok" : " no"), text: ig && ig.status === "connected" ? "@" + ig.username : ig ? "Instagram expirado" : "Sem Instagram" }))));
+          k.post_failed ? el("span", { class: "pill no", text: k.post_failed + " com falha" }) : null)));
+      var row = list.lastChild.querySelector(".side");
+      accountPills(c.accounts || (c.instagram ? [Object.assign({ platform: "instagram" }, c.instagram)] : [])).forEach(function (x) { row.appendChild(x); });
     });
     app.appendChild(el("section", { class: "panel" }, el("div", { class: "head" }, el("h1", { text: "Clientes" })), list));
 
@@ -215,21 +237,29 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
   // ---------- detalhe do cliente ----------
   function loadClient(id) { api("GET", "/admin/clients/" + id).then(function (d) { renderClient(d); window.scrollTo(0, 0); }).catch(fail); }
   function statusPill(c) {
-    var p = c.post;
     if (c.status === "pending") return el("span", { class: "pill wait", text: "Na fila do cliente" });
     if (c.status === "adjust") return el("span", { class: "pill fix", text: "Cliente pediu ajuste" });
     if (c.status === "rejected") return el("span", { class: "pill no", text: "Reprovado" });
     if (c.status === "replaced") return el("span", { class: "pill", text: "Substituído" });
-    if (p && p.status === "published") return el("span", { class: "pill ok", text: "Publicado " + date(p.published_at) });
-    if (p && p.status === "failed") return el("span", { class: "pill no", text: "Falhou" });
-    if (p && p.status === "processing") return el("span", { class: "pill wait", text: "Publicando" });
-    return el("span", { class: "pill", text: "Agendado " + (p ? date(p.scheduled_for) : "") });
+    return el("span", { class: "pill ok", text: "Aprovado" });
   }
+  function postLine(p) {
+    var st = p.status === "published" ? ["Publicado " + date(p.published_at), "pill ok"] : p.status === "failed" ? ["Falhou", "pill no"]
+      : p.status === "processing" ? ["Publicando", "pill wait"] : ["Agendado " + date(p.scheduled_for), "pill"];
+    var m = p.metrics;
+    return el("div", { class: "meta" }, el("b", { style: "color:var(--ink)", text: NET[p.platform] || p.platform }), el("span", { class: st[1], text: st[0] }),
+      p.permalink ? el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "abrir" }) : null,
+      m ? el("span", { text: n(m.views) + " views · " + n(m.likes) + " curtidas · " + n(m.comments) + " coment. · " + n(m.shares) + " compart." }) : null,
+      p.last_error ? el("span", { style: "color:var(--error)", text: p.last_error }) : null,
+      p.status === "failed" ? el("button", { class: "btn sm", type: "button", text: "Tentar de novo", onclick: function () { api("POST", "/admin/posts/" + p.id + "/retry").then(function () { toast("Reenviado."); loadClient(currentClient); }).catch(fail); } }) : null);
+  }
+  var currentClient = null;
   function renderClient(d) {
-    var c = d.client, id = c.id; app.textContent = "";
-    var ig = c.instagram;
-    app.appendChild(el("div", { class: "head" }, el("h1", { text: c.name }),
-      el("span", { class: "pill" + (ig && ig.status === "connected" ? " ok" : " no"), text: ig && ig.status === "connected" ? "Instagram: @" + ig.username + (ig.followers_count != null ? " · " + n(ig.followers_count) + " seguidores" : "") : ig ? "Instagram expirado: cliente precisa reconectar" : "Instagram não conectado" })));
+    var c = d.client, id = c.id; app.textContent = ""; currentClient = id;
+    var accts = c.accounts || (c.instagram ? [Object.assign({ platform: "instagram" }, c.instagram)] : []);
+    var agentNets = (c.agent && c.agent.platforms) || ["instagram"];
+    var headPills = el("span", { class: "side" }); accountPills(accts).forEach(function (x) { headPills.appendChild(x); });
+    app.appendChild(el("div", { class: "head" }, el("h1", { text: c.name }), headPills));
 
     // link de acesso
     var linkOut = el("div", { class: "kv" });
@@ -252,42 +282,85 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
 
     // upload
     var files = el("input", { type: "file", multiple: true, accept: "video/mp4,video/quicktime,image/jpeg,image/png,image/webp", id: "files" });
+    var asCarousel = el("input", { type: "checkbox", id: "asCarousel" });
     var drafts = el("div", { class: "rows" }), pending = [];
     var sendBtn = el("button", { class: "btn", type: "button", text: "Enviar para a fila do cliente", disabled: true });
-    function addDraft(file, revisionOf) {
-      var isVideo = file.type.indexOf("video/") === 0;
-      var d = { file: file, isVideo: isVideo, revisionOf: revisionOf || null,
+    function addDraft(fileList, revisionOf) {
+      var list = Array.prototype.slice.call(fileList);
+      var carousel = list.length > 1, isVideo = !carousel && list[0].type.indexOf("video/") === 0;
+      var nets = netChecks(agentNets);
+      var d = { files: list, carousel: carousel, isVideo: isVideo, revisionOf: revisionOf || null, nets: nets,
         title: el("input", { type: "text", placeholder: "Título interno (aparece no cartão)" }),
         caption: el("textarea", { placeholder: "Legenda do post" }), hashtags: el("input", { type: "text", placeholder: "#hashtags (até 30)" }),
-        format: el("select", null), when: el("input", { type: "datetime-local" }), ai: el("input", { type: "checkbox" }) };
-      (isVideo ? [["reel", "Reel"], ["story", "Story"]] : [["feed", "Post no feed"], ["story", "Story"]]).forEach(function (o) { d.format.appendChild(el("option", { value: o[0], text: o[1] })); });
+        format: el("select", null), when: el("input", { type: "datetime-local" }), ai: el("input", { type: "checkbox" }),
+        locId: el("input", { type: "text", placeholder: "ID da Página do local (só números)", inputmode: "numeric" }),
+        locName: el("input", { type: "text", placeholder: "Nome do local (aparece para o cliente)" }),
+        audio: el("input", { type: "text", placeholder: "Ex.: Som original - Café Aurora" }), music: el("input", { type: "checkbox" }) };
+      (carousel ? [["feed", "Carrossel no feed"]] : isVideo ? [["reel", "Reel"], ["story", "Story"]] : [["feed", "Post no feed"], ["story", "Story"]])
+        .forEach(function (o) { d.format.appendChild(el("option", { value: o[0], text: o[1] })); });
+      var total = list.reduce(function (a, f) { return a + f.size; }, 0), tooBig = list.some(function (f) { return f.size > MAX_BYTES; });
+      var places = el("div", { class: "rows" });
+      var searchBtn = el("button", { class: "btn ghost sm", type: "button", text: "Buscar local", onclick: function () {
+        var q = d.locName.value.trim(); places.textContent = "";
+        if (q.length < 3) return toast("Digite o nome do local para buscar.", true);
+        api("GET", "/admin/clients/" + id + "/places?q=" + encodeURIComponent(q)).then(function (r) {
+          if (!r.places.length) { places.appendChild(el("p", { class: "muted", text: "Nenhum local com endereço encontrado." })); return; }
+          r.places.forEach(function (pl) {
+            places.appendChild(el("button", { class: "row", type: "button", onclick: function () { d.locId.value = pl.id; d.locName.value = pl.name; places.textContent = ""; } },
+              el("span", { class: "main" }, el("b", { text: pl.name }), el("span", { class: "muted", text: pl.address || "Sem endereço" }))));
+          });
+        }).catch(function (e) { places.appendChild(el("div", { class: "notice warn", text: e.message })); });
+      } });
       var box = el("div", { class: "upl" },
-        el("div", { class: "head" }, el("b", { text: file.name + " (" + (file.size / 1048576).toFixed(1) + " MB)" + (revisionOf ? " · nova versão" : "") }),
+        el("div", { class: "head" }, el("b", { text: (carousel ? "Carrossel com " + list.length + " mídias" : list[0].name) + " (" + (total / 1048576).toFixed(1) + " MB)" + (revisionOf ? " · nova versão" : "") }),
           el("button", { class: "btn ghost sm", type: "button", text: "Remover", onclick: function () { pending = pending.filter(function (x) { return x !== d; }); box.remove(); sendBtn.disabled = !pending.length; } })),
-        file.size > MAX_BYTES ? el("div", { class: "notice bad", text: "Arquivo acima de 50 MB. Comprima o vídeo antes de enviar." }) : null,
+        carousel ? el("p", { class: "muted", text: list.map(function (f, i) { return (i + 1) + ". " + f.name; }).join("  ") }) : null,
+        tooBig ? el("div", { class: "notice bad", text: "Há arquivo acima de 50 MB. Comprima antes de enviar." }) : null,
         el("div", { class: "grid" }, field("Título", d.title), field("Formato", d.format), field("Data sugerida (horário deste computador; vazio = próximo horário livre)", d.when),
-          field("Legenda", d.caption, true), field("Hashtags", d.hashtags, true)),
-        el("label", { class: "check" }, d.ai, "Conteúdo gerado por IA (marca o post como tal no Instagram)"));
-      d.title.value = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").slice(0, 80);
+          el("div", { class: "f" }, el("span", { class: "label", text: "Publicar em" }), nets.node),
+          field("Legenda", d.caption, true), field("Hashtags", d.hashtags, true),
+          field("Local: nome", d.locName), field("Local: ID da Página (Instagram)", d.locId),
+          el("div", { class: "f", style: "align-content:end;justify-items:start" }, searchBtn),
+          isVideo ? field("Nome do áudio do Reel (só renomeia o áudio original)", d.audio) : null),
+        places,
+        el("label", { class: "check" }, d.ai, "Conteúdo gerado por IA (marca o post como tal nas redes)"),
+        isVideo ? null : el("label", { class: "check" }, d.music, "TikTok: adicionar música automática nas fotos"));
+      d.title.value = (carousel ? "Carrossel" : list[0].name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ")).slice(0, 80);
       drafts.appendChild(box); pending.push(d); sendBtn.disabled = false;
     }
-    files.addEventListener("change", function () { Array.prototype.forEach.call(files.files, function (f) { addDraft(f); }); files.value = ""; });
+    files.addEventListener("change", function () {
+      var list = Array.prototype.slice.call(files.files);
+      if (asCarousel.checked && list.length > 1) {
+        if (list.length > 10) toast("Carrossel aceita até 10 mídias. Usei as 10 primeiras.", true);
+        addDraft(list.slice(0, 10));
+      } else list.forEach(function (f) { addDraft([f]); });
+      files.value = "";
+    });
+    function sendFile(file) {
+      var isVid = file.type.indexOf("video/") === 0;
+      return prepare(file, isVid).then(function (media) {
+        return upload(id, media.blob, media.name, media.type).then(function (path) {
+          return (media.thumb ? upload(id, media.thumb, "capa.jpg", "image/jpeg").catch(function () { return null; }) : Promise.resolve(null)).then(function (thumbPath) {
+            return { media_path: path, thumb_path: thumbPath || undefined, kind: isVid ? "video" : "image" };
+          });
+        });
+      });
+    }
     sendBtn.addEventListener("click", function () {
-      if (pending.some(function (x) { return x.file.size > MAX_BYTES; })) return toast("Remova os arquivos acima de 50 MB.", true);
+      if (pending.some(function (x) { return x.files.some(function (f) { return f.size > MAX_BYTES; }); })) return toast("Remova os arquivos acima de 50 MB.", true);
+      if (pending.some(function (x) { return !x.nets.value().length; })) return toast("Escolha ao menos uma rede em cada criativo.", true);
       sendBtn.disabled = true; var total = pending.length, done = 0;
       var items = [];
       pending.reduce(function (chain, d) {
         return chain.then(function () {
           sendBtn.textContent = "Enviando " + (done + 1) + " de " + total + "...";
-          return prepare(d).then(function (media) {
-            return upload(id, media.blob, media.name, media.type).then(function (path) {
-              return (media.thumb ? upload(id, media.thumb, "capa.jpg", "image/jpeg").catch(function () { return null; }) : Promise.resolve(null)).then(function (thumbPath) {
-                items.push({ kind: d.isVideo ? "video" : "image", format: d.format.value, media_path: path, thumb_path: thumbPath || undefined, title: d.title.value,
-                  caption: d.caption.value, hashtags: d.hashtags.value, ai_generated: d.ai.checked, revision_of: d.revisionOf || undefined,
-                  suggested_at: d.when.value ? new Date(d.when.value).toISOString() : null });
-                done++;
-              });
-            });
+          return d.files.reduce(function (c2, f) { return c2.then(function (acc) { return sendFile(f).then(function (m) { acc.push(m); return acc; }); }); }, Promise.resolve([])).then(function (media) {
+            var item = { format: d.format.value, title: d.title.value, caption: d.caption.value, hashtags: d.hashtags.value, platforms: d.nets.value(),
+              ai_generated: d.ai.checked, auto_music: d.music.checked, revision_of: d.revisionOf || undefined,
+              location_id: d.locId.value.trim() || undefined, location_name: d.locName.value.trim() || undefined, audio_name: d.audio.value.trim() || undefined,
+              suggested_at: d.when.value ? new Date(d.when.value).toISOString() : null };
+            if (d.carousel) item.media = media; else { item.kind = media[0].kind; item.media_path = media[0].media_path; item.thumb_path = media[0].thumb_path; }
+            items.push(item); done++;
           });
         });
       }, Promise.resolve()).then(function () { return api("POST", "/admin/creatives", { client_id: id, items: items }); })
@@ -295,38 +368,38 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
         .catch(function (e) { sendBtn.disabled = false; sendBtn.textContent = "Enviar para a fila do cliente"; fail(e); });
     });
     var uploadPanel = el("section", { class: "panel", id: "uploadPanel" }, el("h2", { text: "Novos criativos" }),
-      el("p", { class: "muted", text: "Vídeos em MP4 ou MOV (H.264, até 50 MB) viram Reel ou Story. Imagens são convertidas para JPEG, o formato que o Instagram aceita. Para o feed, use proporção entre 4:5 e 1,91:1." }),
-      files, drafts, el("div", null, sendBtn));
+      el("p", { class: "muted", text: "Vídeos em MP4 ou MOV (H.264, até 50 MB) viram Reel ou Story. Imagens são convertidas para JPEG. Para o feed do Instagram, use proporção entre 4:5 e 1,91:1. No carrossel, todas as mídias seguem a proporção da primeira." }),
+      files, el("label", { class: "check" }, asCarousel, "Juntar os arquivos selecionados em um carrossel (2 a 10 mídias)"), drafts, el("div", null, sendBtn));
     app.appendChild(uploadPanel);
 
     // criativos
     var list = el("div", { class: "rows" });
     if (!d.creatives.length) list.appendChild(el("p", { class: "muted", text: "Nenhum criativo enviado ainda." }));
     d.creatives.forEach(function (cr) {
-      var p = cr.post, m = cr.metrics;
+      var ps = cr.posts || (cr.post ? [cr.post] : []);
+      var locked = ps.some(function (p) { return p.status === "published" || p.status === "processing"; });
       var thumb = el("div", { class: "thumb" });
-      if (cr.kind === "image" || cr.thumb_url) thumb.appendChild(el("img", { src: cr.thumb_url || cr.media_url, alt: "", loading: "lazy" }));
+      if (cr.kind !== "video" || cr.thumb_url) thumb.appendChild(el("img", { src: cr.thumb_url || cr.media_url, alt: "", loading: "lazy" }));
       else { var v = el("video", { src: cr.media_url, preload: "metadata" }); v.muted = true; thumb.appendChild(v); }
       var body = el("div", { class: "body" }, el("b", { text: cr.title || (cr.caption || "Sem título").slice(0, 70) }),
-        el("div", { class: "meta" }, statusPill(cr), el("span", { text: FORMAT[cr.format] || cr.format }), el("span", { text: "enviado " + date(cr.created_at) + (cr.source === "api" ? " via API" : "") }),
-          cr.suggested_at && cr.status === "pending" ? el("span", { text: "sugerido " + date(cr.suggested_at) }) : null, cr.ai_generated ? el("span", { text: "IA" }) : null));
+        el("div", { class: "meta" }, statusPill(cr), el("span", { text: kindLabel(cr) }), el("span", { text: (cr.platforms || ["instagram"]).map(function (p) { return NET[p]; }).join(" + ") }),
+          el("span", { text: "enviado " + date(cr.created_at) + (cr.source === "api" ? " via API" : "") }),
+          cr.suggested_at && cr.status === "pending" ? el("span", { text: "sugerido " + date(cr.suggested_at) }) : null,
+          cr.location_name ? el("span", { text: "local: " + cr.location_name }) : null, cr.ai_generated ? el("span", { text: "IA" }) : null));
       if (cr.decision_comment) body.appendChild(el("p", { class: "note", text: "Cliente: " + cr.decision_comment }));
-      if (p && p.last_error) body.appendChild(el("p", { class: "note", text: "Erro: " + p.last_error }));
-      if (m) body.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: n(m.views) + " visualizações · " + n(m.reach) + " alcance · " + n(m.likes) + " curtidas · " + n(m.comments) + " comentários · " + n(m.saved) + " salvos · " + n(m.shares) + " compart." }));
+      ps.forEach(function (p) { body.appendChild(postLine(p)); });
       var acts = el("div", { class: "side" });
       acts.appendChild(el("a", { class: "btn ghost sm", href: cr.media_url, target: "_blank", rel: "noopener", text: "Abrir mídia" }));
-      if (p && p.permalink) acts.appendChild(el("a", { class: "btn ghost sm", href: p.permalink, target: "_blank", rel: "noopener", text: "Ver no Instagram" }));
       if (cr.status === "adjust" || cr.status === "rejected") {
-        var pick = el("input", { type: "file", accept: files.accept, hidden: true });
-        pick.addEventListener("change", function () { if (pick.files[0]) { addDraft(pick.files[0], cr.id); uploadPanel.scrollIntoView({ behavior: "smooth" }); } });
+        var pick = el("input", { type: "file", accept: files.accept, hidden: true, multiple: cr.kind === "carousel" });
+        pick.addEventListener("change", function () { if (pick.files.length) { addDraft(Array.prototype.slice.call(pick.files).slice(0, 10), cr.id); uploadPanel.scrollIntoView({ behavior: "smooth" }); } });
         acts.appendChild(pick);
         acts.appendChild(el("button", { class: "btn sm", type: "button", text: "Enviar nova versão", onclick: function () { pick.click(); } }));
       }
-      if (cr.status !== "pending" && cr.status !== "replaced" && !(p && (p.status === "published" || p.status === "processing"))) {
+      if (cr.status !== "pending" && cr.status !== "replaced" && !locked) {
         acts.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Devolver à fila", onclick: function () { api("POST", "/admin/creatives/" + cr.id + "/reopen").then(function () { loadClient(id); }).catch(fail); } }));
       }
-      if (p && p.status === "failed") acts.appendChild(el("button", { class: "btn sm", type: "button", text: "Tentar publicar de novo", onclick: function () { api("POST", "/admin/posts/" + p.id + "/retry").then(function () { toast("Reenviado."); loadClient(id); }).catch(fail); } }));
-      if (!(p && (p.status === "published" || p.status === "processing"))) {
+      if (!locked) {
         var del = el("button", { class: "btn danger sm", type: "button", text: "Excluir", onclick: function () {
           if (del.dataset.sure) api("DELETE", "/admin/creatives/" + cr.id).then(function () { toast("Criativo excluído."); loadClient(id); }).catch(fail);
           else { del.dataset.sure = "1"; del.textContent = "Confirmar exclusão"; setTimeout(function () { delete del.dataset.sure; del.textContent = "Excluir"; }, 4000); }
@@ -349,10 +422,10 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
   }
 
   // ---------- upload ----------
-  function prepare(d) {
-    if (!d.isVideo) return toJpeg(d.file).then(function (blob) { return { blob: blob, name: d.file.name, type: "image/jpeg" }; });
-    var type = d.file.type === "video/quicktime" ? "video/quicktime" : "video/mp4";
-    return videoThumb(d.file).then(function (thumb) { return { blob: d.file, name: d.file.name, type: type, thumb: thumb }; });
+  function prepare(file, isVideo) {
+    if (!isVideo) return toJpeg(file).then(function (blob) { return { blob: blob, name: file.name, type: "image/jpeg" }; });
+    var type = file.type === "video/quicktime" ? "video/quicktime" : "video/mp4";
+    return videoThumb(file).then(function (thumb) { return { blob: file, name: file.name, type: type, thumb: thumb }; });
   }
   function toJpeg(file) {
     return new Promise(function (resolve, reject) {
@@ -405,10 +478,16 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
         ? "Instagram configurado com Facebook Login for Business (configuração " + cfg.ig_login_config_id + "). Os clientes já podem conectar a conta."
         : "Instagram ainda não configurado. Crie o app na Meta, cadastre os endereços abaixo e salve IG_APP_ID e IG_APP_SECRET nos segredos da Edge Function no Supabase." }),
       cfg.ig_last_oauth_error ? el("div", { class: "notice bad", text: "Última falha de conexão (" + date(cfg.ig_last_oauth_error.at) + "): " + cfg.ig_last_oauth_error.reason + ". " + cfg.ig_last_oauth_error.detail }) : null,
+      el("div", { class: "notice" + (cfg.tiktok_configured ? "" : " warn"), text: cfg.tiktok_configured
+        ? "TikTok ativo pelo provedor Upload-Post. Os clientes já podem conectar a conta."
+        : "TikTok ainda não ativo. Crie a conta no Upload-Post (plano com white-label) e salve a chave no segredo UPLOAD_POST_API_KEY da Edge Function." }),
+      cfg.tiktok_last_connect_error ? el("div", { class: "notice bad", text: "Última falha de conexão do TikTok (" + date(cfg.tiktok_last_connect_error.at) + "): " + cfg.tiktok_last_connect_error.reason + ". " + cfg.tiktok_last_connect_error.detail }) : null,
       el("h2", { text: "Endereços para o app da Meta" }),
       el("div", { class: "kv" }, kv("URI de redirecionamento do OAuth", cfg.oauth_redirect_uri), kv("URL de retorno de desautorização", cfg.deauthorize_url), kv("URL de solicitação de exclusão de dados", cfg.data_deletion_url)),
       el("h2", { text: "Portal e automação" }),
-      el("div", { class: "kv" }, kv("Endereço do portal", cfg.portal_url), kv("API de ingestão (n8n ou agente gerador)", cfg.ingest_base + "/creatives")),
+      el("div", { class: "kv" }, kv("Endereço do portal", cfg.portal_url), kv("API de ingestão (n8n ou agente gerador)", cfg.ingest_base + "/creatives"),
+        kv("Política de Privacidade (App Review)", cfg.portal_url + "privacidade.html"), kv("Termos de Uso", cfg.portal_url + "termos.html"),
+        kv("Instruções de exclusão de dados", cfg.portal_url + "exclusao-de-dados.html")),
       el("p", { class: "muted", text: w ? "Última execução do publicador: " + date(w.at) + " · " + w.published + " publicados, " + w.metrics + " métricas atualizadas" + (w.errors && w.errors.length ? ", " + w.errors.length + " erro(s): " + w.errors.slice(0, 3).join(" | ") : ", sem erros") + "."
         : "O publicador ainda não rodou. Ele executa a cada 5 minutos." })));
 

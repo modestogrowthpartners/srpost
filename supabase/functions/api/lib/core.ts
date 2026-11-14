@@ -69,6 +69,16 @@ export async function portalUrl(): Promise<string> {
 
 export const igConfigured = () => Boolean(Deno.env.get("IG_APP_ID") && Deno.env.get("IG_APP_SECRET"));
 
+export const PLATFORMS = ["instagram", "tiktok"] as const;
+export type Platform = typeof PLATFORMS[number];
+
+// Volta para o portal com o resultado de uma conexao (ex.: ?ig=ok, ?tt=erro&motivo=...).
+export async function backToPortal(params: Record<string, string>): Promise<Response> {
+  const url = new URL(await portalUrl());
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  return redirect(url.toString());
+}
+
 export const str = (v: unknown, max = 5000): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
 export const one = <T>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 export const isUuid = (v: unknown): v is string =>
@@ -119,51 +129,74 @@ export async function authKey(req: Request, roles: string[]): Promise<{ id: stri
 
 // ---------- Criativos (usado pelo painel e pela ingestao) ----------
 const VIDEO_EXT = /\.(mp4|mov)(\?|#|$)/i;
+const MAX_CAROUSEL = 10;
+
+function mediaRef(it: Record<string, unknown>, clientId: string, label: string) {
+  const path = str(it.media_path, 500);
+  if (path && !path.startsWith(`${clientId}/`)) throw new HttpError(400, "bad_path", `${label}: media_path não pertence a este cliente.`);
+  const url = path ? publicUrl(path) : str(it.media_url, 2000);
+  if (!/^https:\/\//i.test(url)) throw new HttpError(400, "bad_media", `${label}: informe media_path ou media_url (https).`);
+  let kind = str(it.kind, 10);
+  if (kind !== "video" && kind !== "image") kind = VIDEO_EXT.test(url) ? "video" : "image";
+  const thumb = str(it.thumb_path, 500) ? publicUrl(str(it.thumb_path, 500)) : str(it.thumb_url, 2000);
+  return { kind, url, path: path || null, thumb: thumb || null };
+}
 
 export async function createCreatives(clientId: string, rawItems: unknown, source: "upload" | "api") {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw new HttpError(400, "no_items", "Envie ao menos um criativo em items.");
   }
   if (rawItems.length > 50) throw new HttpError(400, "too_many", "Máximo de 50 criativos por chamada.");
+  const { data: agent } = await db.from("agents").select("platforms").eq("client_id", clientId).maybeSingle();
+  const defaults = ((agent?.platforms ?? []) as string[]).filter((p) => (PLATFORMS as readonly string[]).includes(p));
   const rows = [];
   const replaced: string[] = [];
   for (const [i, raw] of rawItems.entries()) {
     const it = (raw ?? {}) as Record<string, unknown>;
-    const mediaPath = str(it.media_path, 500);
-    if (mediaPath && !mediaPath.startsWith(`${clientId}/`)) {
-      throw new HttpError(400, "bad_path", `Item ${i + 1}: media_path não pertence a este cliente.`);
+    const label = `Item ${i + 1}`;
+    // Carrossel: lista "media" com 2 a 10 itens. Midia unica: media_path ou media_url no proprio item.
+    const list = Array.isArray(it.media) ? it.media as Record<string, unknown>[] : [];
+    if (list.length === 1 || list.length > MAX_CAROUSEL) {
+      throw new HttpError(400, "bad_carousel", `${label}: carrossel precisa de 2 a ${MAX_CAROUSEL} mídias.`);
     }
-    const mediaUrl = mediaPath ? publicUrl(mediaPath) : str(it.media_url, 2000);
-    if (!/^https:\/\//i.test(mediaUrl)) {
-      throw new HttpError(400, "bad_media", `Item ${i + 1}: informe media_path ou media_url (https).`);
-    }
-    let kind = str(it.kind, 10);
-    if (!kind) kind = VIDEO_EXT.test(mediaUrl) ? "video" : "image";
-    if (!["video", "image"].includes(kind)) throw new HttpError(400, "bad_kind", `Item ${i + 1}: kind deve ser video ou image.`);
+    const media = list.map((m, j) => mediaRef(m ?? {}, clientId, `${label}, mídia ${j + 1}`));
+    const single = media.length ? null : mediaRef(it, clientId, label);
+    const kind = media.length ? "carousel" : single!.kind;
     let format = str(it.format, 10) || (kind === "video" ? "reel" : "feed");
-    if (!["reel", "feed", "story"].includes(format)) throw new HttpError(400, "bad_format", `Item ${i + 1}: format deve ser reel, feed ou story.`);
-    if (format === "reel" && kind !== "video") throw new HttpError(400, "bad_format", `Item ${i + 1}: Reel precisa ser vídeo.`);
+    if (!["reel", "feed", "story"].includes(format)) throw new HttpError(400, "bad_format", `${label}: format deve ser reel, feed ou story.`);
+    if (kind === "carousel" && format !== "feed") throw new HttpError(400, "bad_format", `${label}: carrossel só vai para o feed.`);
+    if (format === "reel" && kind !== "video") throw new HttpError(400, "bad_format", `${label}: Reel precisa ser vídeo.`);
     if (format === "feed" && kind === "video") format = "reel"; // video no feed e publicado como Reel pela API
     const caption = str(it.caption, 2200);
     const hashtags = str(it.hashtags, 600);
     if ((caption + "\n\n" + hashtags).length > 2200) {
-      throw new HttpError(400, "caption_too_long", `Item ${i + 1}: legenda + hashtags passam de 2.200 caracteres.`);
+      throw new HttpError(400, "caption_too_long", `${label}: legenda + hashtags passam de 2.200 caracteres.`);
     }
     if ((hashtags.match(/#/g) ?? []).length > 30) {
-      throw new HttpError(400, "too_many_hashtags", `Item ${i + 1}: o Instagram aceita no máximo 30 hashtags.`);
+      throw new HttpError(400, "too_many_hashtags", `${label}: o Instagram aceita no máximo 30 hashtags.`);
     }
     let suggestedAt: string | null = null;
     if (it.suggested_at) {
       const d = new Date(String(it.suggested_at));
-      if (isNaN(d.getTime())) throw new HttpError(400, "bad_date", `Item ${i + 1}: suggested_at inválido (use ISO 8601).`);
+      if (isNaN(d.getTime())) throw new HttpError(400, "bad_date", `${label}: suggested_at inválido (use ISO 8601).`);
       suggestedAt = d.toISOString();
     }
-    const thumb = str(it.thumb_path, 500) ? publicUrl(str(it.thumb_path, 500)) : str(it.thumb_url, 2000);
+    let platforms = (Array.isArray(it.platforms) ? it.platforms.map((p) => str(p, 12)) : defaults)
+      .filter((p, idx, arr) => (PLATFORMS as readonly string[]).includes(p) && arr.indexOf(p) === idx);
+    if (format === "story") platforms = platforms.filter((p) => p !== "tiktok"); // o TikTok nao tem stories
+    if (!platforms.length) platforms = ["instagram"];
+    const locationId = str(it.location_id, 40);
+    if (locationId && !/^\d+$/.test(locationId)) throw new HttpError(400, "bad_location", `${label}: location_id deve ser o ID numérico da Página do local.`);
     const revisionOf = isUuid(it.revision_of) ? it.revision_of : null;
     if (revisionOf) replaced.push(revisionOf);
+    const cover = media[0] ?? single!;
     rows.push({
-      client_id: clientId, kind, format, media_url: mediaUrl, media_path: mediaPath || null,
-      thumb_url: thumb || null, title: str(it.title, 120) || null, caption, hashtags,
+      client_id: clientId, kind, format, media_url: cover.url, media_path: cover.path,
+      thumb_url: cover.thumb, media,
+      title: str(it.title, 120) || null, caption, hashtags, platforms,
+      location_id: locationId || null, location_name: locationId ? (str(it.location_name, 120) || null) : null,
+      audio_name: format === "reel" ? (str(it.audio_name, 80) || null) : null,
+      auto_music: it.auto_music === true,
       ai_generated: it.ai_generated === true, suggested_at: suggestedAt, revision_of: revisionOf,
       source, external_ref: str(it.external_ref, 200) || null,
     });
@@ -179,7 +212,7 @@ export async function createCreatives(clientId: string, rawItems: unknown, sourc
   }
   let created: unknown[] = [];
   if (toInsert.length) {
-    created = must(await db.from("creatives").insert(toInsert).select("id, kind, format, media_url, status, external_ref"));
+    created = must(await db.from("creatives").insert(toInsert).select("id, kind, format, media_url, platforms, status, external_ref"));
   }
   if (replaced.length) {
     await db.from("creatives").update({ status: "replaced" })
