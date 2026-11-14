@@ -158,7 +158,11 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px so
 .filter[aria-pressed="true"] { background: var(--ink); color: #FFF; }
 .posts { display: grid; gap: 10px; }
 .post { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 10px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--card); }
-.post .thumb { width: 72px; aspect-ratio: 4 / 5; border-radius: 9px; overflow: hidden; background: var(--ink); }
+.post { cursor: pointer; }
+.post:hover { background: var(--bg); }
+.post .thumb { position: relative; width: 72px; aspect-ratio: 4 / 5; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--ink); cursor: pointer; }
+.post .thumb .zoom { position: absolute; right: 4px; bottom: 4px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: rgba(11, 15, 20, 0.72); color: #FFF; }
+.post .thumb .zoom svg { width: 14px; height: 14px; }
 .post .thumb img, .post .thumb video { width: 100%; height: 100%; object-fit: cover; }
 .post .body { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .post h3 { font-size: 1rem; overflow-wrap: anywhere; }
@@ -206,6 +210,22 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
 .err { color: var(--error); font-size: 0.85rem; }
 .sheetbtns { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- Visualizacao ampliada do post ---------- */
+dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; }
+.vw { display: grid; align-content: start; min-height: 100%; }
+.vstage { position: relative; display: grid; place-items: center; width: 100%; max-height: 76dvh; background: var(--ink); overflow: hidden; }
+.vstage.r916 { aspect-ratio: 9 / 16; } .vstage.r45 { aspect-ratio: 4 / 5; }
+.vstage .vmedia { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.vstage .dots { top: calc(14px + env(safe-area-inset-top, 0px)); right: 68px; }
+.vclose { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; background: #FFF; color: var(--ink); }
+.vclose svg { width: 20px; height: 20px; }
+.vinfo { display: grid; gap: 14px; align-content: start; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); min-width: 0; }
+.vinfo h2 { font-size: 1.35rem; overflow-wrap: anywhere; padding-right: 8px; }
+.vinfo .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.85rem; color: var(--muted); }
+.vinfo .cap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vinfo .tags { color: var(--blue); font-size: 0.88rem; overflow-wrap: anywhere; }
+.vinfo .count { font-size: 0.8rem; color: var(--muted); }
+
 .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 30; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: #FFF; font-size: 0.85rem; box-shadow: 0 10px 30px -12px rgba(11, 15, 20, 0.6); }
 .toast.bad { background: var(--error); }
 .toast button { border: 0; background: none; color: var(--butter); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap; }
@@ -238,6 +258,12 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   .post .thumb { width: 96px; }
   .cols { grid-template-columns: 1.2fr 1fr; align-items: start; }
   dialog { margin: auto; border-bottom: 1.5px solid var(--ink); border-radius: 20px; }
+  dialog#viewer { width: min(1040px, calc(100% - 48px)); height: min(820px, calc(100dvh - 48px)); margin: auto; border: 1.5px solid var(--ink); border-radius: 20px; overflow: hidden; }
+  .vw { position: relative; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr); height: 100%; min-height: 0; align-content: stretch; }
+  .vstage, .vstage.r916, .vstage.r45 { aspect-ratio: auto; height: 100%; max-height: none; min-height: 0; }
+  .vstage .dots { top: 14px; right: 14px; }
+  .vclose { position: absolute; top: 12px; right: 12px; }
+  .vinfo { padding: 22px 64px 24px 24px; overflow-y: auto; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .card.settle, .card.fly { transition: none; }
@@ -317,6 +343,14 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   </form>
 </dialog>
 
+<dialog id="viewer" aria-labelledby="viewerTitle">
+  <div class="vw">
+    <button class="vclose" type="button" id="viewerClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="vstage" id="viewerStage"></div>
+    <div class="vinfo" id="viewerInfo"></div>
+  </div>
+</dialog>
+
 <div id="toastHost" aria-live="polite"></div>
 
 <script src="config.js"></script>
@@ -358,6 +392,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   }
   var ICON = {
     no: "M6 6l12 12|M18 6 6 18", yes: "m5 12.5 4.5 4.5L19 7.5", left: "m14.5 6-6 6 6 6", right: "m9.5 6 6 6-6 6",
+    zoom: "M9 4H4v5|M15 4h5v5|M9 20H4v-5|M15 20h5v-5",
     fix: "M4 20h4l10-10-4-4L4 16v4z|M13.5 6.5l4 4",
     on: "M4 9v6h4l5 4V5L8 9H4z|M16.5 8.5a5 5 0 0 1 0 7", off: "M4 9v6h4l5 4V5L8 9H4z|M17 9.5l4 5|M21 9.5l-4 5",
     done: "m5 12.5 4.5 4.5L19 7.5"
@@ -755,6 +790,89 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     return el("span", { class: "pill wait", text: "Agendado" });
   }
   function locked(it) { return postsOf(it).some(function (p) { return p.status === "published" || p.status === "processing"; }); }
+  var METRIC_LABELS = [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]];
+  // Rede, status, horario, link e metricas de uma publicacao.
+  function postBox(p, m) {
+    var line = el("div", { class: "meta" }, el("b", { text: NET[p.platform] || "Instagram" }), postPill(p),
+      el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at, true) : "para " + fmtDate(p.scheduled_for, true) }));
+    if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir na rede" }));
+    var box = el("div", { class: "pp" }, line);
+    if (p.status === "published" && m) {
+      var mt = el("div", { class: "metrics num" });
+      METRIC_LABELS.forEach(function (k) { if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1])); });
+      box.appendChild(mt);
+    } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
+    if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. O time do Sr. Post já foi avisado." }));
+    return box;
+  }
+
+  // ---------- visualizacao ampliada ----------
+  var viewer = $("viewer"), viewerMove = null;
+  function openViewer(it) {
+    var items = itemsOf(it), at = 0, ps = postsOf(it), b = bucket(it);
+    var stage = $("viewerStage"), info = $("viewerInfo");
+    stage.className = "vstage " + (it.format === "feed" ? "r45" : "r916");
+    var count = el("span", { class: "count num" });
+    function paint() {
+      stage.textContent = "";
+      var item = items[at], node;
+      if (item.kind === "video") {
+        node = el("video", { class: "vmedia", src: item.url, poster: item.thumb || undefined, controls: true, loop: true, preload: "auto" });
+        node.setAttribute("playsinline", "");
+      } else node = el("img", { class: "vmedia", src: item.url, alt: (it.title || "Criativo") + (items.length > 1 ? ", imagem " + (at + 1) + " de " + items.length : "") });
+      stage.appendChild(node);
+      if (items.length > 1) {
+        var dots = el("div", { class: "dots", "aria-hidden": "true" });
+        items.forEach(function (_, i) { dots.appendChild(el("i", { class: i === at ? "on" : "" })); });
+        stage.appendChild(dots);
+        stage.appendChild(el("button", { class: "slide prev", type: "button", "aria-label": "Imagem anterior", disabled: at === 0, onclick: function () { viewerMove(-1); } }, svg(ICON.left)));
+        stage.appendChild(el("button", { class: "slide next", type: "button", "aria-label": "Próxima imagem", disabled: at === items.length - 1, onclick: function () { viewerMove(1); } }, svg(ICON.right)));
+        count.textContent = (at + 1) + " de " + items.length;
+      }
+      if (item.kind === "video") node.play().catch(function () {});
+    }
+    viewerMove = function (d) {
+      var to = Math.max(0, Math.min(items.length - 1, at + d)); if (to === at) return;
+      // O redesenho troca os botoes: devolve o foco para a seta usada (ou para a outra, se chegou ao fim).
+      var hadFocus = stage.contains(document.activeElement);
+      at = to; paint();
+      if (hadFocus) { var btn = stage.querySelector(d > 0 ? ".slide.next:not(:disabled)" : ".slide.prev:not(:disabled)") || stage.querySelector(".slide:not(:disabled)"); if (btn) btn.focus(); }
+    };
+
+    info.textContent = "";
+    info.appendChild(el("h2", { id: "viewerTitle", text: it.title || (it.caption || "Criativo").slice(0, 60) }));
+    var meta = el("div", { class: "meta" }, el("span", { class: "pill", text: label(it) + (items.length > 1 ? " · " + items.length + " mídias" : "") }));
+    if (b === "ajuste") meta.appendChild(el("span", { class: "pill fix", text: "Em ajuste" }));
+    if (b === "reprovados") meta.appendChild(el("span", { class: "pill no", text: "Reprovado" }));
+    if ((b === "ajuste" || b === "reprovados") && it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at, true) }));
+    if (items.length > 1) meta.appendChild(count);
+    info.appendChild(meta);
+    ps.forEach(function (p) { info.appendChild(postBox(p, p.metrics || (ps.length === 1 ? it.metrics : null))); });
+    if (!ps.length) info.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Destino: " + nets(it.format === "story" ? ["instagram"] : it.platforms) + "." }));
+    if (it.decision_comment) info.appendChild(el("p", { class: "note", text: "Seu pedido: " + it.decision_comment }));
+    if (it.location_name) info.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Local marcado: " + it.location_name }));
+    info.appendChild(el("div", { class: "field" }, el("span", { class: "label", text: "Legenda" }),
+      el("p", { class: "cap", text: it.caption || (it.format === "story" ? "Story não leva legenda." : "Sem legenda.") }),
+      it.hashtags ? el("p", { class: "tags", text: it.hashtags }) : null));
+    if (!locked(it)) {
+      info.appendChild(el("div", { class: "row" }, el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { closeViewer(); undo(it, true); } })));
+    }
+    paint();
+    if (viewer.showModal) viewer.showModal(); else viewer.setAttribute("open", "");
+    viewer.scrollTop = 0; info.scrollTop = 0;
+    $("viewerClose").focus();
+  }
+  function closeViewer() { if (viewer.close) viewer.close(); else { viewer.removeAttribute("open"); cleanViewer(); } }
+  function cleanViewer() { $("viewerStage").textContent = ""; viewerMove = null; }
+  viewer.addEventListener("close", cleanViewer);
+  $("viewerClose").addEventListener("click", closeViewer);
+  // Clique fora do conteudo (na area escura) fecha.
+  viewer.addEventListener("click", function (ev) { if (ev.target === viewer) closeViewer(); });
+  document.addEventListener("keydown", function (ev) {
+    if (!viewer.open || !viewerMove) return;
+    if (ev.key === "ArrowRight") { ev.preventDefault(); viewerMove(1); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); viewerMove(-1); }
+  });
   function renderLibrary() {
     var lib = S.library, t = lib.totals, demo = S.data.client.is_demo, acc = accounts();
     var stats = $("stats"); stats.textContent = "";
@@ -792,39 +910,28 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       return;
     }
     items.forEach(function (it) {
-      var b = bucket(it), ps = postsOf(it);
-      var thumb = el("div", { class: "thumb" });
+      var b = bucket(it), ps = postsOf(it), title = it.title || (it.caption || "Sem título").slice(0, 60);
+      var thumb = el("button", { class: "thumb", type: "button", "aria-label": "Ver criativo em tamanho grande: " + title, onclick: function (ev) { ev.stopPropagation(); openViewer(it); } });
       if (it.kind !== "video" || it.thumb_url) thumb.appendChild(el("img", { src: it.thumb_url || it.media_url, alt: "", loading: "lazy" }));
       else { var v = el("video", { src: it.media_url, preload: "metadata" }); v.muted = true; thumb.appendChild(v); }
+      thumb.appendChild(el("span", { class: "zoom", "aria-hidden": "true" }, svg(ICON.zoom, "2.4")));
       var body = el("div", { class: "body" });
-      body.appendChild(el("h3", { text: it.title || (it.caption || "Sem título").slice(0, 60) }));
+      body.appendChild(el("h3", { text: title }));
       var meta = el("div", { class: "meta" });
       if (b === "ajuste") meta.appendChild(el("span", { class: "pill fix", text: "Em ajuste" }));
       if (b === "reprovados") meta.appendChild(el("span", { class: "pill no", text: "Reprovado" }));
       meta.appendChild(el("span", { text: label(it) + (it.location_name ? " · " + it.location_name : "") }));
       if ((b === "ajuste" || b === "reprovados") && it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at) }));
       body.appendChild(meta);
-      ps.forEach(function (p) {
-        var m = p.metrics || (ps.length === 1 ? it.metrics : null);
-        var line = el("div", { class: "meta" }, el("b", { text: NET[p.platform] || "Instagram" }), postPill(p),
-          el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at) : "para " + fmtDate(p.scheduled_for) }));
-        if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir" }));
-        var box = el("div", { class: "pp" }, line);
-        if (p.status === "published" && m) {
-          var mt = el("div", { class: "metrics num" });
-          [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]].forEach(function (k) {
-            if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1]));
-          });
-          box.appendChild(mt);
-        } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
-        if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. O time do Sr. Post já foi avisado." }));
-        body.appendChild(box);
-      });
+      ps.forEach(function (p) { body.appendChild(postBox(p, p.metrics || (ps.length === 1 ? it.metrics : null))); });
       if (it.decision_comment) body.appendChild(el("p", { class: "note", text: "Seu pedido: " + it.decision_comment }));
       if (!locked(it)) {
         body.appendChild(el("div", { class: "row" }, el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { undo(it, true); } })));
       }
-      list.appendChild(el("li", { class: "post" }, thumb, body));
+      var li = el("li", { class: "post" }, thumb, body);
+      // O cartao inteiro abre a visualizacao; links e botoes internos mantem a propria acao.
+      li.addEventListener("click", function (ev) { if (!ev.target.closest("a, button")) openViewer(it); });
+      list.appendChild(li);
     });
   }
 
