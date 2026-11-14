@@ -1,12 +1,6 @@
 // Rotas publicas chamadas pela Meta: retorno do OAuth, desautorizacao e exclusao de dados.
-import { db, FUNCTIONS_BASE, HttpError, json, must, portalUrl, redirect } from "./core.ts";
+import { backToPortal as back, db, FUNCTIONS_BASE, HttpError, json, must, portalUrl } from "./core.ts";
 import * as ig from "./instagram.ts";
-
-async function back(params: Record<string, string>): Promise<Response> {
-  const url = new URL(await portalUrl());
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return redirect(url.toString());
-}
 
 // Guarda o ultimo erro de conexao para aparecer no painel do time (Configuracao).
 async function note(reason: string, detail: string) {
@@ -57,7 +51,7 @@ async function callback(req: Request): Promise<Response> {
 
     const now = new Date().toISOString();
     const row = {
-      client_id: st.client_id, platform: "instagram", external_id: chosen.igId,
+      client_id: st.client_id, platform: "instagram", provider: "meta", provider_ref: null, external_id: chosen.igId,
       username: chosen.username, name: chosen.name, profile_picture_url: chosen.picture,
       account_type: null, followers_count: chosen.followers,
       scopes: perms ?? [], status: "connected", last_error: null,
@@ -67,7 +61,7 @@ async function callback(req: Request): Promise<Response> {
     const acc = must(await db.from("social_accounts").upsert(row, { onConflict: "client_id,platform" }).select("id").single()) as { id: string };
     must(await db.rpc("ig_token_store", { p_account_id: acc.id, p_token: token }));
     await db.from("posts").update({ social_account_id: acc.id })
-      .eq("client_id", st.client_id).in("status", ["scheduled", "failed"]);
+      .eq("client_id", st.client_id).eq("platform", "instagram").in("status", ["scheduled", "failed"]);
     return back(accounts.length > 1 ? { ig: "ok", contas: String(accounts.length) } : { ig: "ok" });
   } catch (e) {
     await note("excecao", e instanceof Error ? e.message : String(e));
@@ -104,13 +98,21 @@ export async function instagramRoutes(req: Request, path: string): Promise<Respo
     await removeAccounts(String(p.user_id ?? ""));
     return json({ ok: true });
   }
+  // Callback de exclusao de dados da Meta: apaga a conexao e os tokens e devolve um codigo de acompanhamento.
   if (req.method === "POST" && path === "/data-deletion") {
     const p = await signedPayload(req);
-    await removeAccounts(String(p.user_id ?? ""));
-    const code = crypto.randomUUID();
-    const url = new URL(await portalUrl());
-    url.searchParams.set("exclusao", code);
+    const removed = await removeAccounts(String(p.user_id ?? ""));
+    const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    must(await db.from("deletion_requests").insert({ code, platform: "meta", accounts_removed: removed, completed_at: new Date().toISOString() }));
+    const url = new URL("exclusao-de-dados.html", await portalUrl());
+    url.searchParams.set("codigo", code);
     return json({ url: url.toString(), confirmation_code: code });
+  }
+  // Consulta publica do andamento de um pedido de exclusao (usada pela pagina exclusao-de-dados.html).
+  if (req.method === "GET" && path === "/deletion-status") {
+    const code = (new URL(req.url).searchParams.get("code") ?? "").replace(/[^0-9a-f]/gi, "").slice(0, 32);
+    const { data } = await db.from("deletion_requests").select("created_at, completed_at").eq("code", code).maybeSingle();
+    return json(data ? { found: true, received_at: data.created_at, completed_at: data.completed_at } : { found: false });
   }
   throw new HttpError(404, "not_found", "Rota não encontrada.");
 }

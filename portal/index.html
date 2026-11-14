@@ -102,6 +102,13 @@ main { padding-block: 12px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom
 .chip.light { background: #FFF; color: var(--ink); }
 .sound { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(11, 15, 20, 0.72); color: #FFF; }
 .sound svg { width: 20px; height: 20px; }
+.slide { position: absolute; top: 50%; width: 36px; height: 36px; margin-top: -18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.92); color: var(--ink); }
+.slide.prev { left: 8px; } .slide.next { right: 8px; }
+.slide svg { width: 18px; height: 18px; }
+.slide:disabled { opacity: 0.35; }
+.dots { position: absolute; top: 46px; left: 12px; right: 12px; display: flex; gap: 4px; pointer-events: none; }
+.dots i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.4); }
+.dots i.on { background: #FFF; }
 .stamp { position: absolute; top: 22%; padding: 6px 14px; border: 4px solid currentColor; border-radius: 10px; background: #FFF; font-family: var(--display); font-weight: 700; font-size: 1.5rem; letter-spacing: 0.05em; opacity: 0; pointer-events: none; }
 .stamp.yes { left: 16px; color: var(--approve); transform: rotate(-12deg); }
 .stamp.no { right: 16px; color: var(--error); transform: rotate(12deg); }
@@ -123,6 +130,8 @@ main { padding-block: 12px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom
 .copy { margin: 16px auto 0; width: min(100%, 520px); display: grid; gap: 8px; padding: 14px 16px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--card); }
 .copy p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .copy .tags { color: var(--blue); font-size: 0.85rem; }
+.copy .facts2 { display: grid; gap: 2px; padding-top: 8px; border-top: 1.5px solid var(--soft); font-size: 0.82rem; color: var(--muted); }
+.copy .facts2 b { color: var(--ink); }
 .keys { display: none; font-size: 0.78rem; color: var(--muted); }
 kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 6px; background: var(--card); font-family: var(--body); font-size: 0.75rem; text-align: center; }
 
@@ -163,6 +172,12 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px so
 .metrics span b { font-weight: 700; }
 .post .note { font-size: 0.82rem; padding: 6px 10px; border-left: 3px solid var(--butter); background: var(--bg); overflow-wrap: anywhere; }
 .post .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.82rem; }
+.pp { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: var(--bg); }
+.pp .meta b { font-family: var(--display); font-size: 0.85rem; color: var(--ink); }
+.acct { display: grid; gap: 12px; padding-top: 16px; border-top: 1.5px solid var(--soft); }
+.acct:first-of-type { padding-top: 0; border-top: 0; }
+.acct h3 { font-size: 1.1rem; }
+.legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; margin-top: 28px; font-size: 0.78rem; color: var(--muted); }
 
 /* ---------- Agente ---------- */
 .cols { display: grid; gap: 14px; }
@@ -267,6 +282,11 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       <div class="panel" id="igPanel"></div>
     </div>
   </section>
+  <footer class="legal">
+    <a href="privacidade.html">Política de Privacidade</a>
+    <a href="termos.html">Termos de Uso</a>
+    <a href="exclusao-de-dados.html">Exclusão de dados</a>
+  </footer>
 </main>
 
 <nav class="nav" id="nav" aria-label="Seções" hidden>
@@ -337,7 +357,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     return s;
   }
   var ICON = {
-    no: "M6 6l12 12|M18 6 6 18", yes: "m5 12.5 4.5 4.5L19 7.5",
+    no: "M6 6l12 12|M18 6 6 18", yes: "m5 12.5 4.5 4.5L19 7.5", left: "m14.5 6-6 6 6 6", right: "m9.5 6 6 6-6 6",
     fix: "M4 20h4l10-10-4-4L4 16v4z|M13.5 6.5l4 4",
     on: "M4 9v6h4l5 4V5L8 9H4z|M16.5 8.5a5 5 0 0 1 0 7", off: "M4 9v6h4l5 4V5L8 9H4z|M17 9.5l4 5|M21 9.5l-4 5",
     done: "m5 12.5 4.5 4.5L19 7.5"
@@ -354,6 +374,16 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   }
   function n(v) { return v == null ? "0" : new Intl.NumberFormat("pt-BR").format(v); }
   var FORMAT = { reel: "Reel", feed: "Post no feed", story: "Story" };
+  var NET = { instagram: "Instagram", tiktok: "TikTok" };
+  function label(c) { return c.kind === "carousel" ? "Carrossel" : (FORMAT[c.format] || c.format); }
+  function nets(list) { return (list && list.length ? list : ["instagram"]).map(function (p) { return NET[p] || p; }).join(" e "); }
+  // Contas por plataforma (com reserva para respostas antigas da API, que so traziam o Instagram).
+  function accounts() {
+    var none = { available: false, connected: false, account: null };
+    return S.data.accounts || { instagram: S.data.instagram || none, tiktok: none };
+  }
+  function targets() { var a = S.data.agent; return a && a.platforms && a.platforms.length ? a.platforms : ["instagram"]; }
+  function missing() { var acc = accounts(); return targets().filter(function (p) { return !(acc[p] && acc[p].connected); }); }
 
   function api(method, path, body) {
     return fetch(API + "/portal" + path, {
@@ -417,23 +447,30 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
 
   function afterReturn() {
     var q = new URLSearchParams(location.search);
-    var ig = q.get("ig"), del = q.get("exclusao");
-    if (!ig && !del) return;
+    var ig = q.get("ig"), tt = q.get("tt"), del = q.get("exclusao");
+    if (!ig && !tt && !del) return;
     history.replaceState(null, "", location.pathname);
     if (del) { toast("Pedido de exclusão de dados registrado. Código: " + del, { ms: 15000 }); return; }
     show("agente");
-    if (ig === "ok") {
-      var acc = S.data.instagram.account, many = Number(q.get("contas")) > 1;
+    var net = ig ? "instagram" : "tiktok", acc = accounts()[net].account;
+    if ((ig || tt) === "ok") {
+      var many = Number(q.get("contas")) > 1;
       toast(many ? "Conectamos @" + ((acc && acc.username) || "sua conta") + ". Você liberou mais de uma conta: para usar outra, desconecte e refaça o login marcando só a conta desejada."
-        : "Instagram conectado. Os posts aprovados já podem ir ao ar.", { ms: many ? 14000 : 6000 });
-    } else {
-      var why = { negado: "Você cancelou a autorização.", expirado: "O pedido de conexão expirou. Tente de novo.",
-        configuracao: "A conexão ainda não está liberada.",
-        sem_conta: "Não encontramos um Instagram profissional ligado a uma Página do Facebook. No login, marque a Página e a conta do Instagram que quer conectar.",
-        permissoes: "Faltou liberar alguma permissão no login. Tente de novo e mantenha todas as permissões marcadas.",
-        instagram: "A Meta recusou a conexão. Confira se o Instagram é profissional e está ligado a uma Página do Facebook, e tente de novo." };
-      toast(why[q.get("motivo")] || "Não foi possível conectar o Instagram. Tente de novo.", { bad: true, ms: 14000 });
+        : NET[net] + " conectado. Os posts aprovados já podem ir ao ar.", { ms: many ? 14000 : 6000 });
+      return;
     }
+    var why = ig ? {
+      negado: "Você cancelou a autorização.", expirado: "O pedido de conexão expirou. Tente de novo.",
+      configuracao: "A conexão ainda não está liberada.",
+      sem_conta: "Não encontramos um Instagram profissional ligado a uma Página do Facebook. No login, marque a Página e a conta do Instagram que quer conectar.",
+      permissoes: "Faltou liberar alguma permissão no login. Tente de novo e mantenha todas as permissões marcadas.",
+      instagram: "A Meta recusou a conexão. Confira se o Instagram é profissional e está ligado a uma Página do Facebook, e tente de novo."
+    } : {
+      negado: "Você cancelou a autorização no TikTok.", expirado: "O pedido de conexão expirou. Tente de novo.",
+      sem_conta: "O TikTok não confirmou a conexão. Tente de novo e conclua a autorização até o fim.",
+      tiktok: "O TikTok recusou a conexão. Tente de novo em instantes."
+    };
+    toast(why[q.get("motivo")] || "Não foi possível conectar o " + NET[net] + ". Tente de novo.", { bad: true, ms: 14000 });
   }
 
   // ---------- navegacao ----------
@@ -448,45 +485,64 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   }
   document.querySelectorAll("[data-view]").forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.view); }); });
 
-  function renderAll() { renderBadges(); renderNotice(); renderDeck(); renderAgent(); renderInstagram(); }
+  function renderAll() { renderBadges(); renderNotice(); renderDeck(); renderAgent(); renderAccounts(); }
   function renderBadges() {
     document.querySelectorAll("[data-badge]").forEach(function (b) { b.hidden = !S.queue.length; b.textContent = String(S.queue.length); });
   }
   function renderNotice() {
     var host = $("igNotice"); host.textContent = "";
-    var ig = S.data.instagram;
-    $("igDot").hidden = ig.connected;
-    if (ig.connected) return;
-    var expired = ig.account && ig.account.status === "expired";
+    var miss = missing(), acc = accounts();
+    $("igDot").hidden = !miss.length;
+    if (!miss.length) return;
+    var expired = miss.some(function (p) { return acc[p] && acc[p].account && acc[p].account.status === "expired"; });
     host.appendChild(el("div", { class: "notice" + (expired ? " warn" : "") },
-      el("span", { text: expired ? "A conexão com o Instagram expirou. Reconecte para os posts aprovados irem ao ar."
-        : "Conecte seu Instagram para os posts aprovados irem ao ar no horário." }),
+      el("span", { text: (expired ? "A conexão com " + nets(miss) + " precisa ser refeita" : "Conecte " + nets(miss)) + " para os posts aprovados irem ao ar no horário." }),
       el("button", { class: "link", type: "button", text: expired ? "Reconectar" : "Conectar", onclick: function () { show("agente"); } })));
   }
 
   // ---------- pilha de criativos ----------
   var drag = null;
-  function mediaEl(c, top) {
-    if (c.kind === "video") {
-      var v = el("video", { class: "media", src: c.media_url, poster: c.thumb_url || undefined, loop: true, preload: top ? "auto" : "none" });
+  function mediaEl(item, top, title) {
+    if (item.kind === "video") {
+      var v = el("video", { class: "media", src: item.url, poster: item.thumb || undefined, loop: true, preload: top ? "auto" : "none" });
       v.muted = true; v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
       return v;
     }
-    return el("img", { class: "media", src: c.media_url, alt: c.title || "Criativo", draggable: false, decoding: "async" });
+    return el("img", { class: "media", src: item.url, alt: title || "Criativo", decoding: "async" });
+  }
+  function itemsOf(c) {
+    if (c.kind === "carousel" && c.media && c.media.length) return c.media;
+    return [{ kind: c.kind === "video" ? "video" : "image", url: c.media_url, thumb: c.thumb_url }];
   }
   function cardEl(c, top, pos) {
-    var card = el("article", { class: "card " + (top ? "front" : "next") + " is-" + c.format, "aria-label": (FORMAT[c.format] || "") + ": " + (c.title || "criativo") });
-    card.appendChild(mediaEl(c, top));
-    var chips = el("div", { class: "chips" }, el("span", { class: "chip light", text: FORMAT[c.format] || c.format }));
+    var items = itemsOf(c), at = 0;
+    var card = el("article", { class: "card " + (top ? "front" : "next") + " is-" + c.format, "aria-label": label(c) + ": " + (c.title || "criativo") });
+    var holder = el("div", { style: "width:100%;height:100%" });
+    card.appendChild(holder);
+    var dots = items.length > 1 ? el("div", { class: "dots", "aria-hidden": "true" }) : null;
+    var prev, next;
+    function paint() {
+      holder.textContent = ""; holder.appendChild(mediaEl(items[at], top, c.title));
+      if (dots) { dots.textContent = ""; items.forEach(function (_, i) { dots.appendChild(el("i", { class: i === at ? "on" : "" })); }); }
+      if (prev) { prev.disabled = at === 0; next.disabled = at === items.length - 1; }
+      if (top && S.view === "aprovar") { var v = holder.querySelector("video"); if (v) v.play().catch(function () {}); }
+    }
+    var chips = el("div", { class: "chips" }, el("span", { class: "chip light", text: label(c) + (items.length > 1 ? " · " + items.length : "") }));
     if (pos) chips.appendChild(el("span", { class: "chip num", text: pos }));
     if (c.revision_of) chips.appendChild(el("span", { class: "chip", text: "Nova versão" }));
     card.appendChild(chips);
+    if (dots) card.appendChild(dots);
     card.appendChild(el("div", { class: "shade" },
       c.title ? el("h2", { text: c.title }) : null,
       el("p", { class: "when", text: c.suggested_at ? "Sugerido para " + fmtDate(c.suggested_at, true) : "Vai no próximo horário livre do agente" }),
       c.caption ? el("p", { class: "cap", text: c.caption }) : null));
     if (top) {
-      if (c.kind === "video") {
+      if (items.length > 1) {
+        var go = function (d) { return function () { at = Math.max(0, Math.min(items.length - 1, at + d)); paint(); }; };
+        prev = el("button", { class: "slide prev", type: "button", "aria-label": "Imagem anterior", onclick: go(-1) }, svg(ICON.left));
+        next = el("button", { class: "slide next", type: "button", "aria-label": "Próxima imagem", onclick: go(1) }, svg(ICON.right));
+        [prev, next].forEach(function (b) { b.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); }); card.appendChild(b); });
+      } else if (items[0].kind === "video") {
         var b = el("button", { class: "sound", type: "button", "aria-label": "Ligar o som", "aria-pressed": "false" }, svg(ICON.off, "2"));
         b.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
         b.addEventListener("click", function () {
@@ -501,6 +557,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       card.appendChild(el("span", { class: "stamp fix", text: "PEDIR AJUSTE" }));
       card.addEventListener("pointerdown", onDown);
     }
+    paint();
     return card;
   }
   function actBtn(kind, label, key) {
@@ -529,6 +586,11 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     var copy = el("div", { class: "copy" }, el("span", { class: "label", text: "Legenda" }));
     copy.appendChild(el("p", { text: c.caption || (c.format === "story" ? "Story não leva legenda." : "Sem legenda.") }));
     if (c.hashtags) copy.appendChild(el("p", { class: "tags", text: c.hashtags }));
+    var facts = el("div", { class: "facts2" }, el("span", null, "Publica em: ", el("b", { text: nets(c.format === "story" ? ["instagram"] : c.platforms) })));
+    if (c.location_name) facts.appendChild(el("span", null, "Local marcado: ", el("b", { text: c.location_name })));
+    if (c.audio_name) facts.appendChild(el("span", null, "Nome do áudio: ", el("b", { text: c.audio_name })));
+    if (c.auto_music && (c.platforms || []).indexOf("tiktok") >= 0 && c.kind !== "video") facts.appendChild(el("span", { text: "No TikTok, com música automática." }));
+    copy.appendChild(facts);
     host.appendChild(copy);
     var keys = el("p", { class: "keys" });
     [["←", " reprovar  "], ["↑", " pedir ajuste  "], ["→", " aprovar  "], ["Z", " desfazer"]].forEach(function (k) { keys.appendChild(el("kbd", { text: k[0] })); keys.appendChild(document.createTextNode(k[1])); });
@@ -614,7 +676,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       req.then(function (res) {
         S.libraryStale = true;
         if (action === "approve") S.data.counts.scheduled++;
-        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + "."
+        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + "."
           : action === "reject" ? "Reprovado. O agente não publica este." : "Pedido de ajuste enviado ao agente.";
         toast(msg, { action: "Desfazer", onAction: function () { undo(c); } });
       }).catch(function (e) {
@@ -677,37 +739,39 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     api("GET", "/library").then(function (lib) { S.library = lib; S.libraryStale = false; renderLibrary(); })
       .catch(function (e) { $("posts").textContent = ""; $("posts").appendChild(el("li", { class: "empty" }, el("p", { text: e.message }), el("button", { class: "btn", type: "button", text: "Tentar de novo", onclick: function () { S.libraryStale = true; loadLibrary(); } }))); });
   }
+  function postsOf(it) { return it.posts || (it.post ? [it.post] : []); }
   function bucket(it) {
     if (it.status === "adjust") return "ajuste";
     if (it.status === "rejected") return "reprovados";
-    var st = it.post && it.post.status;
-    if (st === "published") return "publicados";
-    if (st === "failed") return "falha";
+    var ps = postsOf(it);
+    if (ps.some(function (p) { return p.status === "published"; })) return "publicados";
+    if (ps.length && ps.every(function (p) { return p.status === "failed"; })) return "falha";
     return "agendados";
   }
-  function pillFor(it) {
-    var b = bucket(it), p = it.post;
-    if (b === "publicados") return el("span", { class: "pill live", text: "Publicado" });
-    if (b === "ajuste") return el("span", { class: "pill fix", text: "Em ajuste" });
-    if (b === "reprovados") return el("span", { class: "pill no", text: "Reprovado" });
-    if (b === "falha") return el("span", { class: "pill no", text: "Não publicou" });
-    if (p && p.status === "processing") return el("span", { class: "pill wait", text: "Publicando" });
+  function postPill(p) {
+    if (p.status === "published") return el("span", { class: "pill live", text: "Publicado" });
+    if (p.status === "failed") return el("span", { class: "pill no", text: "Não publicou" });
+    if (p.status === "processing") return el("span", { class: "pill wait", text: "Publicando" });
     return el("span", { class: "pill wait", text: "Agendado" });
   }
+  function locked(it) { return postsOf(it).some(function (p) { return p.status === "published" || p.status === "processing"; }); }
   function renderLibrary() {
-    var lib = S.library, t = lib.totals, demo = S.data.client.is_demo;
+    var lib = S.library, t = lib.totals, demo = S.data.client.is_demo, acc = accounts();
     var stats = $("stats"); stats.textContent = "";
     [["Publicados", t.published], ["Visualizações", t.views], ["Alcance", t.reach], ["Interações", t.interactions]].forEach(function (s) {
       stats.appendChild(el("div", { class: "stat" }, el("span", { class: "label", text: s[0] }), el("b", { class: "num", text: n(s[1]) })));
     });
     $("statNote").textContent = !t.published ? "Os números aparecem aqui depois que o primeiro post for publicado."
-      : (demo ? "Números de exemplo. " : "") + "Soma dos posts publicados pelo portal. Interações = curtidas, comentários, salvamentos e compartilhamentos.";
+      : (demo ? "Números de exemplo. " : "") + "Soma dos posts publicados pelo portal em todas as redes. Interações = curtidas, comentários, salvamentos e compartilhamentos.";
 
     var pn = $("postsNotice"); pn.textContent = "";
-    var waiting = lib.items.filter(function (i) { return bucket(i) === "agendados"; }).length;
-    if (waiting && !S.data.instagram.connected) {
+    var waitingNets = {}, waiting = 0;
+    lib.items.forEach(function (i) { postsOf(i).forEach(function (p) {
+      if ((p.status === "scheduled" || p.status === "failed") && !(acc[p.platform] && acc[p.platform].connected)) { waiting++; waitingNets[p.platform] = 1; }
+    }); });
+    if (waiting) {
       pn.appendChild(el("div", { class: "notice warn" },
-        el("span", { text: waiting + (waiting === 1 ? " post aprovado aguarda" : " posts aprovados aguardam") + " a conexão do Instagram para ir ao ar." }),
+        el("span", { text: waiting + (waiting === 1 ? " publicação aguarda" : " publicações aguardam") + " a conexão de " + nets(Object.keys(waitingNets)) + " para ir ao ar." }),
         el("button", { class: "link", type: "button", text: "Conectar", onclick: function () { show("agente"); } })));
     }
 
@@ -720,42 +784,46 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     });
 
     var list = $("posts"); list.textContent = "";
+    var when = function (it) { var ps = postsOf(it); return (ps[0] && (ps[0].published_at || ps[0].scheduled_for)) || it.decided_at || ""; };
     var items = lib.items.filter(function (i) { var b = bucket(i); if (b === "falha") b = "agendados"; return S.filter === "todos" || b === S.filter; });
-    items.sort(function (a, b) {
-      var ka = (a.post && (a.post.published_at || a.post.scheduled_for)) || a.decided_at || "", kb = (b.post && (b.post.published_at || b.post.scheduled_for)) || b.decided_at || "";
-      return ka < kb ? 1 : -1;
-    });
+    items.sort(function (a, b) { return when(a) < when(b) ? 1 : -1; });
     if (!items.length) {
       list.appendChild(el("li", { class: "empty" }, el("p", { text: S.filter === "todos" ? "Você ainda não decidiu nenhum criativo. Comece pela aba Aprovar." : "Nenhum post neste filtro." })));
       return;
     }
     items.forEach(function (it) {
-      var b = bucket(it), p = it.post, m = it.metrics;
+      var b = bucket(it), ps = postsOf(it);
       var thumb = el("div", { class: "thumb" });
-      if (it.kind === "image" || it.thumb_url) thumb.appendChild(el("img", { src: it.thumb_url || it.media_url, alt: "", loading: "lazy" }));
+      if (it.kind !== "video" || it.thumb_url) thumb.appendChild(el("img", { src: it.thumb_url || it.media_url, alt: "", loading: "lazy" }));
       else { var v = el("video", { src: it.media_url, preload: "metadata" }); v.muted = true; thumb.appendChild(v); }
       var body = el("div", { class: "body" });
       body.appendChild(el("h3", { text: it.title || (it.caption || "Sem título").slice(0, 60) }));
-      var meta = el("div", { class: "meta" }, pillFor(it), el("span", { text: FORMAT[it.format] || it.format }));
-      if (b === "publicados") meta.appendChild(el("span", { text: "em " + fmtDate(p.published_at) }));
-      else if (b === "agendados" && p) meta.appendChild(el("span", { text: "para " + fmtDate(p.scheduled_for) }));
-      else if (it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at) }));
+      var meta = el("div", { class: "meta" });
+      if (b === "ajuste") meta.appendChild(el("span", { class: "pill fix", text: "Em ajuste" }));
+      if (b === "reprovados") meta.appendChild(el("span", { class: "pill no", text: "Reprovado" }));
+      meta.appendChild(el("span", { text: label(it) + (it.location_name ? " · " + it.location_name : "") }));
+      if ((b === "ajuste" || b === "reprovados") && it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at) }));
       body.appendChild(meta);
-      if (b === "publicados" && m) {
-        var mt = el("div", { class: "metrics num" });
-        [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]].forEach(function (k) {
-          if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1]));
-        });
-        body.appendChild(mt);
-      } else if (b === "publicados") body.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "Métricas chegam cerca de 1 hora depois da publicação." }));
+      ps.forEach(function (p) {
+        var m = p.metrics || (ps.length === 1 ? it.metrics : null);
+        var line = el("div", { class: "meta" }, el("b", { text: NET[p.platform] || "Instagram" }), postPill(p),
+          el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at) : "para " + fmtDate(p.scheduled_for) }));
+        if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir" }));
+        var box = el("div", { class: "pp" }, line);
+        if (p.status === "published" && m) {
+          var mt = el("div", { class: "metrics num" });
+          [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]].forEach(function (k) {
+            if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1]));
+          });
+          box.appendChild(mt);
+        } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
+        if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. O time do Sr. Post já foi avisado." }));
+        body.appendChild(box);
+      });
       if (it.decision_comment) body.appendChild(el("p", { class: "note", text: "Seu pedido: " + it.decision_comment }));
-      if (b === "falha") body.appendChild(el("p", { class: "note", text: "O Instagram não aceitou este post. O time do Sr. Post já foi avisado." }));
-      var row = el("div", { class: "row" });
-      if (p && p.permalink) row.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Ver no Instagram" }));
-      if (b !== "publicados" && !(p && p.status === "processing")) {
-        row.appendChild(el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { undo(it, true); } }));
+      if (!locked(it)) {
+        body.appendChild(el("div", { class: "row" }, el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { undo(it, true); } })));
       }
-      if (row.childNodes.length) body.appendChild(row);
       list.appendChild(el("li", { class: "post" }, thumb, body));
     });
   }
@@ -782,48 +850,76 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       var ul = el("ul", { class: "tagsrow" }); a.pillars.forEach(function (p) { ul.appendChild(el("li", { text: p })); });
       host.appendChild(field("Sobre o que ele posta", ul));
     }
-    host.appendChild(el("p", { class: "muted", style: "font-size:0.82rem", text: "Quer mudar o tom, os temas ou os horários? Fale com o time do Sr. Post." }));
+    host.appendChild(field("Onde ele publica", el("p", { text: nets(targets()) })));
+    host.appendChild(el("p", { class: "muted", style: "font-size:0.82rem", text: "Quer mudar o tom, os temas, os horários ou as redes? Fale com o time do Sr. Post." }));
   }
-  function renderInstagram() {
-    var ig = S.data.instagram, acc = ig.account, host = $("igPanel"); host.textContent = "";
-    host.appendChild(el("h2", { text: "Instagram" }));
-    if (ig.connected) {
-      var av = el("div", { class: "avatar", "aria-hidden": "true", style: "background:var(--sky)" });
+  var CONNECT = {
+    instagram: {
+      start: "/instagram/start", stop: "/instagram/disconnect", opening: "Abrindo o login da Meta...",
+      intro: "Você entra com o Facebook que administra a Página ligada ao seu Instagram e autoriza: o Sr. Post nunca vê sua senha.",
+      pending: "A conexão com o Instagram está em liberação. Enquanto isso, pode aprovar normalmente: os posts ficam agendados.",
+      needs: ["O Instagram precisa ser profissional (Empresa ou Criador de conteúdo).", "Ele precisa estar ligado a uma Página do Facebook que você administra.", "No login, marque a Página e a conta do Instagram e mantenha as permissões."]
+    },
+    tiktok: {
+      start: "/connect/tiktok/start", stop: "/connect/tiktok/disconnect", opening: "Abrindo o TikTok...",
+      intro: "Você autoriza direto na tela do TikTok: o Sr. Post nunca vê sua senha.",
+      pending: "A conexão com o TikTok está em liberação. Enquanto isso, pode aprovar normalmente: os posts ficam agendados.",
+      needs: ["A conta precisa estar pública para os posts saírem públicos.", "Vídeos e fotos vão para o perfil. O TikTok não recebe stories."]
+    }
+  };
+  function accountBlock(net) {
+    var st = accounts()[net], acc = st.account, cfg = CONNECT[net];
+    var box = el("div", { class: "acct" });
+    var head = el("div", { class: "who" });
+    if (st.connected) {
+      var av = el("div", { class: "avatar", "aria-hidden": "true", style: "background:var(--sky);width:48px;height:48px;font-size:1.1rem" });
       if (acc.profile_picture_url) { var im = el("img", { src: acc.profile_picture_url, alt: "" }); im.onerror = function () { av.textContent = "@"; }; av.appendChild(im); } else av.textContent = "@";
-      host.appendChild(el("div", { class: "who" }, av,
-        el("div", { style: "display:grid;gap:2px;min-width:0" }, el("b", { text: "@" + (acc.username || "conta") }),
-          el("span", { class: "muted", style: "font-size:0.82rem", text: (acc.followers_count != null ? n(acc.followers_count) + " seguidores" : "Conta profissional") + (acc.page_name ? " · Página " + acc.page_name : "") })),
-        el("span", { class: "pill live", style: "margin-left:auto", text: "Conectado" })));
-      host.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Os posts aprovados são publicados nesta conta no horário combinado. A conexão é renovada automaticamente" + (acc.token_expires_at ? " (válida até " + fmtDate(acc.token_expires_at).split(",")[0] + ")." : ".") }));
-      var box = el("div", { class: "confirm" });
-      var ask = el("button", { class: "btn ghost sm", type: "button", text: "Desconectar", onclick: function () {
-        box.textContent = "";
-        box.appendChild(el("span", { text: "Desconectar pausa as publicações. Confirma?" }));
-        box.appendChild(el("button", { class: "btn sm", type: "button", text: "Sim, desconectar", onclick: function () {
-          api("POST", "/instagram/disconnect").then(function () { S.data.instagram = { available: ig.available, connected: false, account: null }; renderNotice(); renderInstagram(); toast("Instagram desconectado."); })
-            .catch(function (e) { toast(e.message, { bad: true }); });
+      head.appendChild(av);
+      head.appendChild(el("div", { style: "display:grid;gap:2px;min-width:0" }, el("h3", { text: NET[net] }),
+        el("span", { class: "muted", style: "font-size:0.82rem;overflow-wrap:anywhere", text: "@" + (acc.username || "conta") + (acc.followers_count != null ? " · " + n(acc.followers_count) + " seguidores" : "") + (acc.page_name ? " · Página " + acc.page_name : "") })));
+      head.appendChild(el("span", { class: "pill live", style: "margin-left:auto", text: "Conectado" }));
+      box.appendChild(head);
+      var bar = el("div", { class: "confirm" });
+      bar.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Desconectar", onclick: function () {
+        bar.textContent = "";
+        bar.appendChild(el("span", { text: "Desconectar pausa as publicações no " + NET[net] + ". Confirma?" }));
+        bar.appendChild(el("button", { class: "btn sm", type: "button", text: "Sim, desconectar", onclick: function () {
+          api("POST", cfg.stop).then(function () {
+            var off = { available: st.available, connected: false, account: null };
+            if (S.data.accounts) S.data.accounts[net] = off;
+            if (net === "instagram") S.data.instagram = off;
+            S.libraryStale = true; renderNotice(); renderAccounts(); toast(NET[net] + " desconectado.");
+          }).catch(function (e) { toast(e.message, { bad: true }); });
         } }));
-        box.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Cancelar", onclick: renderInstagram }));
-      } });
-      box.appendChild(ask); host.appendChild(box);
-      return;
+        bar.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Cancelar", onclick: renderAccounts }));
+      } }));
+      box.appendChild(bar);
+      return box;
     }
     var expired = acc && acc.status === "expired";
-    host.appendChild(el("p", { text: expired ? "A conexão com @" + (acc.username || "sua conta") + " expirou. Reconecte para o agente voltar a publicar."
-      : "Conecte a conta onde o agente vai publicar. Você entra com o Facebook que administra a Página ligada ao seu Instagram e autoriza: o Sr. Post nunca vê sua senha." }));
-    if (ig.available) {
-      var btn = el("button", { class: "btn", type: "button", text: expired ? "Reconectar Instagram" : "Conectar Instagram", onclick: function () {
-        btn.disabled = true; btn.textContent = "Abrindo o login da Meta...";
-        api("POST", "/instagram/start").then(function (r) { location.href = r.authorize_url; })
-          .catch(function (e) { btn.disabled = false; btn.textContent = expired ? "Reconectar Instagram" : "Conectar Instagram"; toast(e.message, { bad: true }); });
+    head.appendChild(el("h3", { text: NET[net] }));
+    head.appendChild(el("span", { class: "pill" + (expired ? " no" : ""), style: "margin-left:auto", text: expired ? "Reconectar" : "Não conectado" }));
+    box.appendChild(head);
+    box.appendChild(el("p", { style: "font-size:0.9rem", text: expired ? "A conexão com @" + (acc.username || "sua conta") + " precisa ser refeita para o agente voltar a publicar." : cfg.intro }));
+    if (st.available) {
+      var txt = (expired ? "Reconectar " : "Conectar ") + NET[net];
+      var btn = el("button", { class: "btn", type: "button", text: txt, style: "justify-self:start", onclick: function () {
+        btn.disabled = true; btn.textContent = cfg.opening;
+        api("POST", cfg.start).then(function (r) { location.href = r.authorize_url; })
+          .catch(function (e) { btn.disabled = false; btn.textContent = txt; toast(e.message, { bad: true }); });
       } });
-      host.appendChild(btn);
-    } else {
-      host.appendChild(el("div", { class: "notice" }, el("span", { text: "A conexão com o Instagram está em liberação. O time do Sr. Post avisa quando você puder conectar. Enquanto isso, pode aprovar normalmente: os posts ficam agendados." })));
-    }
-    var req = el("ul", { style: "display:grid;gap:6px;font-size:0.85rem;color:var(--muted)" });
-    ["O Instagram precisa ser profissional (Empresa ou Criador de conteúdo).", "Ele precisa estar ligado a uma Página do Facebook que você administra.", "No login, marque a Página e a conta do Instagram e mantenha as permissões.", "O agente só publica o que você aprovar aqui."].forEach(function (t) { req.appendChild(el("li", { text: "· " + t })); });
-    host.appendChild(field("Antes de conectar", req));
+      box.appendChild(btn);
+    } else box.appendChild(el("div", { class: "notice" }, el("span", { text: cfg.pending })));
+    var req = el("ul", { style: "display:grid;gap:4px;font-size:0.82rem;color:var(--muted)" });
+    cfg.needs.forEach(function (t) { req.appendChild(el("li", { text: "· " + t })); });
+    box.appendChild(req);
+    return box;
+  }
+  function renderAccounts() {
+    var host = $("igPanel"); host.textContent = "";
+    host.appendChild(el("h2", { text: "Contas conectadas" }));
+    host.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "O agente só publica o que você aprovar aqui, e você pode desconectar quando quiser." }));
+    ["instagram", "tiktok"].forEach(function (net) { host.appendChild(accountBlock(net)); });
   }
 
   // ---------- inicio ----------

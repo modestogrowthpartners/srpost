@@ -109,12 +109,15 @@ export function profile(igUserId: string, token: string) {
   return get(`/${igUserId}`, { fields: "username,name,profile_picture_url,followers_count" }, token);
 }
 
+export type MediaItem = { kind: "video" | "image"; url: string };
 export type PublishInput = {
-  kind: "video" | "image"; format: "reel" | "feed" | "story";
-  mediaUrl: string; caption: string; aiGenerated: boolean;
+  kind: "video" | "image" | "carousel"; format: "reel" | "feed" | "story";
+  mediaUrl: string; items: MediaItem[]; caption: string; aiGenerated: boolean;
+  locationId?: string | null; audioName?: string | null;
 };
 
 export async function createContainer(igUserId: string, token: string, p: PublishInput): Promise<string> {
+  if (p.kind === "carousel") return createCarousel(igUserId, token, p);
   const params: Record<string, string> = {};
   if (p.format === "story") {
     params.media_type = "STORIES";
@@ -124,13 +127,51 @@ export async function createContainer(igUserId: string, token: string, p: Publis
     params.video_url = p.mediaUrl;
     params.share_to_feed = "true";
     params.caption = p.caption;
+    // A API so renomeia o audio original do Reel; nao seleciona musica da biblioteca do Instagram.
+    if (p.audioName) params.audio_name = p.audioName;
   } else {
     params.image_url = p.mediaUrl;
     params.caption = p.caption;
   }
+  if (p.locationId && p.format !== "story") params.location_id = p.locationId;
   if (p.aiGenerated) params.is_ai_generated = "true";
   const r = await post(`/${igUserId}/media`, params, token);
   return String(r.id);
+}
+
+// Carrossel: um container por item (is_carousel_item) e depois o container pai com a lista de filhos.
+async function createCarousel(igUserId: string, token: string, p: PublishInput): Promise<string> {
+  const ids: string[] = [];
+  for (const it of p.items) {
+    const params: Record<string, string> = { is_carousel_item: "true" };
+    if (it.kind === "video") { params.media_type = "VIDEO"; params.video_url = it.url; } else params.image_url = it.url;
+    ids.push(String((await post(`/${igUserId}/media`, params, token)).id));
+  }
+  // Videos sao processados de forma assincrona: espera os itens de video ficarem prontos antes de montar o pai.
+  const deadline = Date.now() + 45_000;
+  for (const [i, id] of ids.entries()) {
+    if (p.items[i].kind !== "video") continue;
+    for (;;) {
+      const st = await containerStatus(id, token);
+      if (st.code === "FINISHED") break;
+      if (st.code === "ERROR" || st.code === "EXPIRED") throw new IgError(`Item ${i + 1} do carrossel foi recusado: ${st.detail || st.code}`, 400);
+      if (Date.now() > deadline) throw new IgError("Os vídeos do carrossel ainda estão em processamento. Nova tentativa em instantes.", 503);
+      await new Promise((r) => setTimeout(r, 4000));
+    }
+  }
+  const params: Record<string, string> = { media_type: "CAROUSEL", children: ids.join(","), caption: p.caption };
+  if (p.locationId) params.location_id = p.locationId;
+  const r = await post(`/${igUserId}/media`, params, token);
+  return String(r.id);
+}
+
+// Busca Paginas com dados de local para usar como location_id. Depende do tipo de token e dos recursos do app.
+export async function searchPlaces(q: string, token: string) {
+  const r = await get("/pages/search", { q, fields: "id,name,location,link" }, token);
+  return (r?.data ?? []).filter((p: any) => p.location).slice(0, 15).map((p: any) => ({
+    id: String(p.id), name: String(p.name ?? ""),
+    address: [p.location?.street, p.location?.city, p.location?.state].filter(Boolean).join(", "),
+  }));
 }
 
 export async function containerStatus(containerId: string, token: string): Promise<{ code: string; detail: string }> {

@@ -3,18 +3,22 @@
 //   /admin/*      time (x-admin-key)
 //   /ingest/*     automacoes (x-api-key)
 //   /instagram/*  retorno do OAuth e callbacks da Meta
+//   /connect/*    retorno da conexao por provedor (TikTok)
 //   /worker/tick  publicacao e metricas (pg_cron)
 import { authKey, CORS, getSetting, HttpError, igConfigured, json } from "./lib/core.ts";
 import { portalRoutes } from "./lib/portal.ts";
 import { adminRoutes, ingestRoutes } from "./lib/admin.ts";
 import { instagramRoutes } from "./lib/igroutes.ts";
 import { runWorker } from "./lib/worker.ts";
+import { connectReturn } from "./lib/connect.ts";
+import { uploadPostConfigured } from "./lib/uploadpost.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   const path = new URL(req.url).pathname.replace(/^.*?\/api(?=\/|$)/, "") || "/";
   try {
-    if (path === "/health") return json({ ok: true, ig_configured: igConfigured() });
+    if (path === "/health") return json({ ok: true, ig_configured: igConfigured(), tiktok_configured: uploadPostConfigured() });
+    if (req.method === "GET" && path.startsWith("/connect/return/")) return await connectReturn(req, path.slice(16));
     if (path.startsWith("/portal/")) return await portalRoutes(req, path.slice(7));
     if (path.startsWith("/admin/")) return await adminRoutes(req, path.slice(6));
     if (path.startsWith("/ingest/")) return await ingestRoutes(req, path.slice(7));
