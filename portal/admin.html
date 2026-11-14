@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sr. Post | Painel do time</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: painel de trabalho em coluna, lista de clientes -> detalhe do cliente. Mesma identidade do portal. */
+:root {
+  color-scheme: light;
+  --bg: #F4F7FA; --soft: #E4E9EF; --card: #FFFFFF; --ink: #0B0F14; --muted: #4E5B6B; --line: #B5C0CD;
+  --blue: #668EC2; --sky: #DCE6F2; --butter: #FFA070; --butter-soft: #FFE3D3; --approve: #13243B;
+  --error: #B3361F; --error-soft: #F7DDD6;
+  --display: "Chakra Petch", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 0.9rem; line-height: 1.5; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; } h3 { font-size: 1rem; }
+ul { margin: 0; padding: 0; list-style: none; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.wrap { width: 100%; max-width: 1080px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { border-bottom: 1.5px solid var(--ink); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 54px; padding-block: 8px; }
+.top b { font-family: var(--display); font-size: 1.15rem; }
+.top nav { display: flex; flex-wrap: wrap; gap: 6px; }
+main { padding-block: 24px 64px; display: grid; gap: 18px; }
+.label { font-family: var(--display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.panel { display: grid; gap: 14px; padding: 18px; border: 1.5px solid var(--ink); border-radius: 16px; background: var(--card); min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 999px; background: var(--ink); color: #FFF; font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
+.btn:hover { background: var(--approve); }
+.btn.ghost { background: var(--card); color: var(--ink); }
+.btn.ghost:hover { background: var(--soft); }
+.btn.sm { min-height: 32px; padding: 0 12px; font-size: 0.78rem; }
+.btn.danger { background: var(--card); color: var(--error); border-color: var(--error); }
+.btn.danger:hover { background: var(--error-soft); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.f { display: grid; gap: 4px; min-width: 0; }
+.f.wide { grid-column: 1 / -1; }
+input[type=text], input[type=password], input[type=number], input[type=datetime-local], textarea, select { width: 100%; min-height: 40px; padding: 8px 12px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--bg); }
+textarea { min-height: 72px; resize: vertical; }
+.pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 999px; font-family: var(--display); font-weight: 600; font-size: 0.72rem; background: var(--soft); white-space: nowrap; }
+.pill.ok { background: var(--approve); color: #FFF; } .pill.wait { background: var(--sky); } .pill.fix { background: var(--butter); }
+.pill.no { background: var(--error-soft); color: var(--error); border-color: var(--error); }
+.rows { display: grid; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); min-width: 0; }
+button.row { width: 100%; text-align: left; border-color: var(--ink); background: var(--card); }
+button.row:hover { background: var(--sky); }
+.row .main { display: grid; gap: 2px; min-width: 0; flex: 1 1 240px; overflow-wrap: anywhere; }
+.row .side { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.kv { display: grid; gap: 6px; }
+.kv div { display: grid; gap: 2px; }
+code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; border-radius: 8px; background: var(--soft); overflow-wrap: anywhere; display: block; user-select: all; }
+.notice { padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--sky); font-size: 0.85rem; overflow-wrap: anywhere; }
+.notice.warn { background: var(--butter-soft); } .notice.bad { background: var(--error-soft); border-color: var(--error); }
+.creative { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 10px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); }
+.creative .thumb { width: 64px; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; background: var(--ink); }
+.creative .thumb img, .creative .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.creative .body { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.creative .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 0.78rem; color: var(--muted); }
+.note { padding: 6px 10px; border-left: 3px solid var(--butter); background: var(--card); font-size: 0.82rem; }
+.upl { display: grid; gap: 10px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; }
+.check { display: flex; align-items: center; gap: 8px; }
+.check input { width: 18px; height: 18px; }
+.gate { min-height: 70vh; display: grid; place-content: center; gap: 12px; justify-items: center; text-align: center; }
+.gate form { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: min(100%, 460px); }
+.gate input { flex: 1 1 240px; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: #FFF; font-size: 0.85rem; z-index: 30; }
+#toast.bad { background: var(--error); }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <b>Sr. Post <span class="muted" style="font-size:0.8rem;font-family:var(--body);font-weight:400">painel do time</span></b>
+  <nav id="navbar" hidden>
+    <button class="btn ghost sm" type="button" id="navClients">Clientes</button>
+    <button class="btn ghost sm" type="button" id="navConfig">Configuração</button>
+    <button class="btn ghost sm" type="button" id="navOut">Sair</button>
+  </nav>
+</div></header>
+<main class="wrap" id="app"></main>
+<div id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+  var API = (window.SRPOST && window.SRPOST.api) || "", STORE = "srpost.admin.key", KEY = "";
+  var app = document.getElementById("app");
+  var MAX_BYTES = 50 * 1024 * 1024;
+
+  function el(tag, attrs) {
+    var n = document.createElement(tag), i, k;
+    if (attrs) for (k in attrs) {
+      if (attrs[k] == null || attrs[k] === false) continue;
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else if (k in n && k !== "list") { try { n[k] = attrs[k]; } catch (e) { n.setAttribute(k, attrs[k]); } }
+      else n.setAttribute(k, attrs[k]);
+    }
+    for (i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null || c === false) continue; n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
+    return n;
+  }
+  function toast(msg, bad) {
+    var t = document.getElementById("toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, bad ? 8000 : 4000);
+  }
+  function api(method, path, body) {
+    return fetch(API + path, { method: method, headers: { "x-admin-key": KEY, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j.message || "Erro " + r.status); e.status = r.status; throw e; } return j; }); },
+        function () { throw new Error("Sem conexão com a API."); });
+  }
+  function fail(e) { if (e.status === 401) { logout(); } toast(e.message, true); }
+  function date(iso) { return iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""; }
+  function n(v) { return v == null ? "0" : new Intl.NumberFormat("pt-BR").format(v); }
+  function field(label, input, wide) { return el("label", { class: "f" + (wide ? " wide" : "") }, el("span", { class: "label", text: label }), input); }
+  function copyBtn(text) {
+    return el("button", { class: "btn ghost sm", type: "button", text: "Copiar", onclick: function (ev) {
+      var b = ev.currentTarget;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { b.textContent = "Copiado"; setTimeout(function () { b.textContent = "Copiar"; }, 1500); },
+        function () { toast("Selecione o texto e copie manualmente.", true); });
+    } });
+  }
+  var FORMAT = { reel: "Reel", feed: "Feed", story: "Story" };
+
+  // ---------- acesso ----------
+  function logout() { KEY = ""; try { localStorage.removeItem(STORE); } catch (e) {} document.getElementById("navbar").hidden = true; gate(); }
+  function gate(msg) {
+    app.textContent = "";
+    var input = el("input", { type: "password", id: "adminKey", placeholder: "srp_adm_...", autocomplete: "off", "aria-label": "Chave do painel" });
+    app.appendChild(el("section", { class: "gate" }, el("h1", { text: "Painel do time" }),
+      el("p", { class: "muted", text: msg || "Entre com a sua chave de acesso do painel." }),
+      el("form", { onsubmit: function (ev) { ev.preventDefault(); KEY = input.value.trim(); if (KEY.length < 20) return; enter(); } }, input, el("button", { class: "btn", type: "submit", text: "Entrar" }))));
+  }
+  function enter() {
+    api("GET", "/admin/overview").then(function (o) {
+      try { localStorage.setItem(STORE, KEY); } catch (e) {}
+      document.getElementById("navbar").hidden = false; renderClients(o);
+    }).catch(function (e) { KEY = ""; gate(e.status === 401 ? "Chave inválida. Confira e tente de novo." : e.message); });
+  }
+  document.getElementById("navOut").addEventListener("click", logout);
+  document.getElementById("navClients").addEventListener("click", function () { loadClients(); });
+  document.getElementById("navConfig").addEventListener("click", function () { loadConfig(); });
+
+  // ---------- clientes ----------
+  function loadClients() { api("GET", "/admin/overview").then(renderClients).catch(fail); }
+  function agentFields(a) {
+    a = a || {};
+    var f = {
+      name: el("input", { type: "text", value: a.name || "", placeholder: "Ex.: Aurora" }),
+      role_line: el("input", { type: "text", value: a.role_line || "", placeholder: "Agente de conteúdo da marca" }),
+      bio: el("textarea", { value: a.bio || "", placeholder: "O que o agente faz por este cliente." }),
+      tone: el("textarea", { value: a.tone || "", placeholder: "Tom de voz combinado." }),
+      pillars: el("input", { type: "text", value: (a.pillars || []).join(", "), placeholder: "Dicas, Bastidores, Promoções" }),
+      post_times: el("input", { type: "text", value: (a.post_times || ["12:00", "18:30"]).join(", "), placeholder: "12:00, 18:30" }),
+      posts_per_week: el("input", { type: "number", min: "1", max: "28", value: String(a.posts_per_week || 7) }),
+      status: el("select", null, el("option", { value: "ativo", text: "Ativo" }), el("option", { value: "configurando", text: "Em configuração" }), el("option", { value: "pausado", text: "Pausado" }))
+    };
+    f.status.value = a.status || "ativo";
+    var nodes = [field("Nome do agente", f.name), field("Descrição curta", f.role_line), field("Posts por semana", f.posts_per_week), field("Status", f.status),
+      field("Horários de publicação (HH:MM, separados por vírgula)", f.post_times), field("Temas (separados por vírgula)", f.pillars),
+      field("O que o agente faz", f.bio, true), field("Tom de voz", f.tone, true)];
+    return { nodes: nodes, value: function () {
+      var split = function (v) { return v.split(",").map(function (s) { return s.trim(); }).filter(Boolean); };
+      return { name: f.name.value, role_line: f.role_line.value, bio: f.bio.value, tone: f.tone.value, pillars: split(f.pillars.value),
+        post_times: split(f.post_times.value), posts_per_week: Number(f.posts_per_week.value) || 7, status: f.status.value };
+    } };
+  }
+  function renderClients(o) {
+    app.textContent = "";
+    if (!o.config.ig_configured) app.appendChild(el("div", { class: "notice warn" }, "A conexão com o Instagram ainda não está configurada: falta cadastrar IG_APP_ID e IG_APP_SECRET. Veja em Configuração. Os clientes já podem aprovar; os posts ficam agendados."));
+    var list = el("div", { class: "rows" });
+    if (!o.clients.length) list.appendChild(el("p", { class: "muted", text: "Nenhum cliente ainda. Cadastre o primeiro abaixo." }));
+    o.clients.forEach(function (c) {
+      var k = c.counts || {}, ig = c.instagram;
+      list.appendChild(el("button", { class: "row", type: "button", onclick: function () { loadClient(c.id); } },
+        el("span", { class: "main" }, el("b", { text: c.name + (c.is_demo ? " (demonstração)" : "") }), el("span", { class: "muted", text: (c.segment || "Sem segmento") + " · " + c.slug })),
+        el("span", { class: "side" },
+          el("span", { class: "pill wait", text: (k.pending || 0) + " na fila" }),
+          k.adjust ? el("span", { class: "pill fix", text: k.adjust + " em ajuste" }) : null,
+          el("span", { class: "pill", text: (k.post_scheduled || 0) + " agendados" }),
+          el("span", { class: "pill ok", text: (k.post_published || 0) + " publicados" }),
+          k.post_failed ? el("span", { class: "pill no", text: k.post_failed + " com falha" }) : null,
+          el("span", { class: "pill" + (ig && ig.status === "connected" ? " ok" : " no"), text: ig && ig.status === "connected" ? "@" + ig.username : ig ? "Instagram expirado" : "Sem Instagram" }))));
+    });
+    app.appendChild(el("section", { class: "panel" }, el("div", { class: "head" }, el("h1", { text: "Clientes" })), list));
+
+    var name = el("input", { type: "text", placeholder: "Nome do cliente" }), seg = el("input", { type: "text", placeholder: "Ex.: Clínica de estética" });
+    var af = agentFields();
+    var g = el("div", { class: "grid" }, field("Cliente", name), field("Segmento", seg)); af.nodes.forEach(function (x) { g.appendChild(x); });
+    app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Novo cliente" }), g,
+      el("div", null, el("button", { class: "btn", type: "button", text: "Cadastrar cliente", onclick: function (ev) {
+        var b = ev.currentTarget; b.disabled = true;
+        api("POST", "/admin/clients", { name: name.value, segment: seg.value, agent: af.value() }).then(function (r) { toast("Cliente cadastrado."); loadClient(r.client.id); })
+          .catch(function (e) { b.disabled = false; fail(e); });
+      } }))));
+  }
+
+  // ---------- detalhe do cliente ----------
+  function loadClient(id) { api("GET", "/admin/clients/" + id).then(function (d) { renderClient(d); window.scrollTo(0, 0); }).catch(fail); }
+  function statusPill(c) {
+    var p = c.post;
+    if (c.status === "pending") return el("span", { class: "pill wait", text: "Na fila do cliente" });
+    if (c.status === "adjust") return el("span", { class: "pill fix", text: "Cliente pediu ajuste" });
+    if (c.status === "rejected") return el("span", { class: "pill no", text: "Reprovado" });
+    if (c.status === "replaced") return el("span", { class: "pill", text: "Substituído" });
+    if (p && p.status === "published") return el("span", { class: "pill ok", text: "Publicado " + date(p.published_at) });
+    if (p && p.status === "failed") return el("span", { class: "pill no", text: "Falhou" });
+    if (p && p.status === "processing") return el("span", { class: "pill wait", text: "Publicando" });
+    return el("span", { class: "pill", text: "Agendado " + (p ? date(p.scheduled_for) : "") });
+  }
+  function renderClient(d) {
+    var c = d.client, id = c.id; app.textContent = "";
+    var ig = c.instagram;
+    app.appendChild(el("div", { class: "head" }, el("h1", { text: c.name }),
+      el("span", { class: "pill" + (ig && ig.status === "connected" ? " ok" : " no"), text: ig && ig.status === "connected" ? "Instagram: @" + ig.username + (ig.followers_count != null ? " · " + n(ig.followers_count) + " seguidores" : "") : ig ? "Instagram expirado: cliente precisa reconectar" : "Instagram não conectado" })));
+
+    // link de acesso
+    var linkOut = el("div", { class: "kv" });
+    var links = el("div", { class: "rows" });
+    d.links.forEach(function (l) {
+      links.appendChild(el("div", { class: "row" },
+        el("span", { class: "main" }, el("b", { text: l.label || "Link sem nome" }), el("span", { class: "muted", text: "Criado " + date(l.created_at) + (l.last_used_at ? " · último acesso " + date(l.last_used_at) : " · nunca usado") + (l.expires_at ? " · expira " + date(l.expires_at) : "") })),
+        el("span", { class: "side" }, l.revoked_at ? el("span", { class: "pill no", text: "Revogado" })
+          : el("button", { class: "btn danger sm", type: "button", text: "Revogar", onclick: function () { api("POST", "/admin/links/" + l.id + "/revoke").then(function () { toast("Link revogado."); loadClient(id); }).catch(fail); } }))));
+    });
+    var label = el("input", { type: "text", placeholder: "Ex.: Celular da Marina" });
+    app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Link de acesso do cliente" }),
+      el("p", { class: "muted", text: "Cada link abre o portal direto, sem senha. O endereço completo só aparece uma vez, na hora em que é gerado: copie e envie ao cliente." }),
+      el("div", { class: "grid" }, field("Identificação do link", label),
+        el("div", { class: "f", style: "align-content:end;justify-items:start" }, el("button", { class: "btn", type: "button", text: "Gerar link", onclick: function () {
+          api("POST", "/admin/clients/" + id + "/links", { label: label.value }).then(function (r) {
+            linkOut.textContent = ""; linkOut.appendChild(el("div", { class: "notice" }, el("span", { class: "label", text: "Link gerado (copie agora)" }), el("code", { text: r.url }), copyBtn(r.url)));
+          }).catch(fail);
+        } }))), linkOut, links));
+
+    // upload
+    var files = el("input", { type: "file", multiple: true, accept: "video/mp4,video/quicktime,image/jpeg,image/png,image/webp", id: "files" });
+    var drafts = el("div", { class: "rows" }), pending = [];
+    var sendBtn = el("button", { class: "btn", type: "button", text: "Enviar para a fila do cliente", disabled: true });
+    function addDraft(file, revisionOf) {
+      var isVideo = file.type.indexOf("video/") === 0;
+      var d = { file: file, isVideo: isVideo, revisionOf: revisionOf || null,
+        title: el("input", { type: "text", placeholder: "Título interno (aparece no cartão)" }),
+        caption: el("textarea", { placeholder: "Legenda do post" }), hashtags: el("input", { type: "text", placeholder: "#hashtags (até 30)" }),
+        format: el("select", null), when: el("input", { type: "datetime-local" }), ai: el("input", { type: "checkbox" }) };
+      (isVideo ? [["reel", "Reel"], ["story", "Story"]] : [["feed", "Post no feed"], ["story", "Story"]]).forEach(function (o) { d.format.appendChild(el("option", { value: o[0], text: o[1] })); });
+      var box = el("div", { class: "upl" },
+        el("div", { class: "head" }, el("b", { text: file.name + " (" + (file.size / 1048576).toFixed(1) + " MB)" + (revisionOf ? " · nova versão" : "") }),
+          el("button", { class: "btn ghost sm", type: "button", text: "Remover", onclick: function () { pending = pending.filter(function (x) { return x !== d; }); box.remove(); sendBtn.disabled = !pending.length; } })),
+        file.size > MAX_BYTES ? el("div", { class: "notice bad", text: "Arquivo acima de 50 MB. Comprima o vídeo antes de enviar." }) : null,
+        el("div", { class: "grid" }, field("Título", d.title), field("Formato", d.format), field("Data sugerida (horário deste computador; vazio = próximo horário livre)", d.when),
+          field("Legenda", d.caption, true), field("Hashtags", d.hashtags, true)),
+        el("label", { class: "check" }, d.ai, "Conteúdo gerado por IA (marca o post como tal no Instagram)"));
+      d.title.value = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").slice(0, 80);
+      drafts.appendChild(box); pending.push(d); sendBtn.disabled = false;
+    }
+    files.addEventListener("change", function () { Array.prototype.forEach.call(files.files, function (f) { addDraft(f); }); files.value = ""; });
+    sendBtn.addEventListener("click", function () {
+      if (pending.some(function (x) { return x.file.size > MAX_BYTES; })) return toast("Remova os arquivos acima de 50 MB.", true);
+      sendBtn.disabled = true; var total = pending.length, done = 0;
+      var items = [];
+      pending.reduce(function (chain, d) {
+        return chain.then(function () {
+          sendBtn.textContent = "Enviando " + (done + 1) + " de " + total + "...";
+          return prepare(d).then(function (media) {
+            return upload(id, media.blob, media.name, media.type).then(function (path) {
+              return (media.thumb ? upload(id, media.thumb, "capa.jpg", "image/jpeg").catch(function () { return null; }) : Promise.resolve(null)).then(function (thumbPath) {
+                items.push({ kind: d.isVideo ? "video" : "image", format: d.format.value, media_path: path, thumb_path: thumbPath || undefined, title: d.title.value,
+                  caption: d.caption.value, hashtags: d.hashtags.value, ai_generated: d.ai.checked, revision_of: d.revisionOf || undefined,
+                  suggested_at: d.when.value ? new Date(d.when.value).toISOString() : null });
+                done++;
+              });
+            });
+          });
+        });
+      }, Promise.resolve()).then(function () { return api("POST", "/admin/creatives", { client_id: id, items: items }); })
+        .then(function () { toast(total + (total === 1 ? " criativo enviado." : " criativos enviados.")); loadClient(id); })
+        .catch(function (e) { sendBtn.disabled = false; sendBtn.textContent = "Enviar para a fila do cliente"; fail(e); });
+    });
+    var uploadPanel = el("section", { class: "panel", id: "uploadPanel" }, el("h2", { text: "Novos criativos" }),
+      el("p", { class: "muted", text: "Vídeos em MP4 ou MOV (H.264, até 50 MB) viram Reel ou Story. Imagens são convertidas para JPEG, o formato que o Instagram aceita. Para o feed, use proporção entre 4:5 e 1,91:1." }),
+      files, drafts, el("div", null, sendBtn));
+    app.appendChild(uploadPanel);
+
+    // criativos
+    var list = el("div", { class: "rows" });
+    if (!d.creatives.length) list.appendChild(el("p", { class: "muted", text: "Nenhum criativo enviado ainda." }));
+    d.creatives.forEach(function (cr) {
+      var p = cr.post, m = cr.metrics;
+      var thumb = el("div", { class: "thumb" });
+      if (cr.kind === "image" || cr.thumb_url) thumb.appendChild(el("img", { src: cr.thumb_url || cr.media_url, alt: "", loading: "lazy" }));
+      else { var v = el("video", { src: cr.media_url, preload: "metadata" }); v.muted = true; thumb.appendChild(v); }
+      var body = el("div", { class: "body" }, el("b", { text: cr.title || (cr.caption || "Sem título").slice(0, 70) }),
+        el("div", { class: "meta" }, statusPill(cr), el("span", { text: FORMAT[cr.format] || cr.format }), el("span", { text: "enviado " + date(cr.created_at) + (cr.source === "api" ? " via API" : "") }),
+          cr.suggested_at && cr.status === "pending" ? el("span", { text: "sugerido " + date(cr.suggested_at) }) : null, cr.ai_generated ? el("span", { text: "IA" }) : null));
+      if (cr.decision_comment) body.appendChild(el("p", { class: "note", text: "Cliente: " + cr.decision_comment }));
+      if (p && p.last_error) body.appendChild(el("p", { class: "note", text: "Erro: " + p.last_error }));
+      if (m) body.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: n(m.views) + " visualizações · " + n(m.reach) + " alcance · " + n(m.likes) + " curtidas · " + n(m.comments) + " comentários · " + n(m.saved) + " salvos · " + n(m.shares) + " compart." }));
+      var acts = el("div", { class: "side" });
+      acts.appendChild(el("a", { class: "btn ghost sm", href: cr.media_url, target: "_blank", rel: "noopener", text: "Abrir mídia" }));
+      if (p && p.permalink) acts.appendChild(el("a", { class: "btn ghost sm", href: p.permalink, target: "_blank", rel: "noopener", text: "Ver no Instagram" }));
+      if (cr.status === "adjust" || cr.status === "rejected") {
+        var pick = el("input", { type: "file", accept: files.accept, hidden: true });
+        pick.addEventListener("change", function () { if (pick.files[0]) { addDraft(pick.files[0], cr.id); uploadPanel.scrollIntoView({ behavior: "smooth" }); } });
+        acts.appendChild(pick);
+        acts.appendChild(el("button", { class: "btn sm", type: "button", text: "Enviar nova versão", onclick: function () { pick.click(); } }));
+      }
+      if (cr.status !== "pending" && cr.status !== "replaced" && !(p && (p.status === "published" || p.status === "processing"))) {
+        acts.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Devolver à fila", onclick: function () { api("POST", "/admin/creatives/" + cr.id + "/reopen").then(function () { loadClient(id); }).catch(fail); } }));
+      }
+      if (p && p.status === "failed") acts.appendChild(el("button", { class: "btn sm", type: "button", text: "Tentar publicar de novo", onclick: function () { api("POST", "/admin/posts/" + p.id + "/retry").then(function () { toast("Reenviado."); loadClient(id); }).catch(fail); } }));
+      if (!(p && (p.status === "published" || p.status === "processing"))) {
+        var del = el("button", { class: "btn danger sm", type: "button", text: "Excluir", onclick: function () {
+          if (del.dataset.sure) api("DELETE", "/admin/creatives/" + cr.id).then(function () { toast("Criativo excluído."); loadClient(id); }).catch(fail);
+          else { del.dataset.sure = "1"; del.textContent = "Confirmar exclusão"; setTimeout(function () { delete del.dataset.sure; del.textContent = "Excluir"; }, 4000); }
+        } });
+        acts.appendChild(del);
+      }
+      body.appendChild(acts);
+      list.appendChild(el("div", { class: "creative" }, thumb, body));
+    });
+    app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Criativos (" + d.creatives.length + ")" }), list));
+
+    // agente
+    var nm = el("input", { type: "text", value: c.name }), sg = el("input", { type: "text", value: c.segment || "" });
+    var af = agentFields(c.agent); var g = el("div", { class: "grid" }, field("Cliente", nm), field("Segmento", sg)); af.nodes.forEach(function (x) { g.appendChild(x); });
+    app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Cliente e agente" }),
+      el("p", { class: "muted", text: "É o que o cliente vê na aba Agente. Identificador para a API: " + c.slug }), g,
+      el("div", null, el("button", { class: "btn", type: "button", text: "Salvar", onclick: function () {
+        api("PATCH", "/admin/clients/" + id, { name: nm.value, segment: sg.value, agent: af.value() }).then(function () { toast("Salvo."); loadClient(id); }).catch(fail);
+      } }))));
+  }
+
+  // ---------- upload ----------
+  function prepare(d) {
+    if (!d.isVideo) return toJpeg(d.file).then(function (blob) { return { blob: blob, name: d.file.name, type: "image/jpeg" }; });
+    var type = d.file.type === "video/quicktime" ? "video/quicktime" : "video/mp4";
+    return videoThumb(d.file).then(function (thumb) { return { blob: d.file, name: d.file.name, type: type, thumb: thumb }; });
+  }
+  function toJpeg(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var s = Math.min(1, 1440 / img.naturalWidth), cv = document.createElement("canvas");
+        cv.width = Math.round(img.naturalWidth * s); cv.height = Math.round(img.naturalHeight * s);
+        var ctx = cv.getContext("2d"); ctx.fillStyle = "#FFF"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (b) { b ? resolve(b) : reject(new Error("Não foi possível converter a imagem.")); }, "image/jpeg", 0.9);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Imagem inválida: " + file.name)); };
+      img.src = url;
+    });
+  }
+  function videoThumb(file) {
+    return new Promise(function (resolve) {
+      var v = document.createElement("video"), url = URL.createObjectURL(file), finished = false;
+      var end = function (b) { if (finished) return; finished = true; URL.revokeObjectURL(url); resolve(b || null); };
+      v.muted = true; v.preload = "auto"; v.playsInline = true;
+      v.onloadeddata = function () { try { v.currentTime = Math.min(0.5, (v.duration || 1) / 2); } catch (e) { end(); } };
+      v.onseeked = function () {
+        try {
+          var s = Math.min(1, 540 / v.videoWidth), cv = document.createElement("canvas");
+          cv.width = Math.round(v.videoWidth * s); cv.height = Math.round(v.videoHeight * s);
+          cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height); cv.toBlob(function (b) { end(b); }, "image/jpeg", 0.8);
+        } catch (e) { end(); }
+      };
+      v.onerror = function () { end(); }; setTimeout(function () { end(); }, 8000);
+      v.src = url;
+    });
+  }
+  function upload(clientId, blob, filename, type) {
+    return api("POST", "/admin/upload-url", { client_id: clientId, filename: filename, content_type: type }).then(function (u) {
+      return fetch(u.signed_url, { method: "PUT", headers: { "content-type": type, "x-upsert": "false" }, body: blob }).then(function (r) {
+        if (!r.ok) throw new Error("Falha no upload de " + filename + " (" + r.status + ").");
+        return u.path;
+      });
+    });
+  }
+
+  // ---------- configuracao ----------
+  function loadConfig() { Promise.all([api("GET", "/admin/overview"), api("GET", "/admin/keys")]).then(function (r) { renderConfig(r[0].config, r[1]); }).catch(fail); }
+  function renderConfig(cfg, keys) {
+    app.textContent = "";
+    var kv = function (label, value) { return el("div", null, el("span", { class: "label", text: label }), el("code", { text: value })); };
+    var w = cfg.worker_last_run;
+    app.appendChild(el("section", { class: "panel" }, el("h1", { text: "Configuração" }),
+      el("div", { class: "notice" + (cfg.ig_configured && cfg.ig_login_config_id ? "" : " warn"), text: cfg.ig_configured && cfg.ig_login_config_id
+        ? "Instagram configurado com Facebook Login for Business (configuração " + cfg.ig_login_config_id + "). Os clientes já podem conectar a conta."
+        : "Instagram ainda não configurado. Crie o app na Meta, cadastre os endereços abaixo e salve IG_APP_ID e IG_APP_SECRET nos segredos da Edge Function no Supabase." }),
+      cfg.ig_last_oauth_error ? el("div", { class: "notice bad", text: "Última falha de conexão (" + date(cfg.ig_last_oauth_error.at) + "): " + cfg.ig_last_oauth_error.reason + ". " + cfg.ig_last_oauth_error.detail }) : null,
+      el("h2", { text: "Endereços para o app da Meta" }),
+      el("div", { class: "kv" }, kv("URI de redirecionamento do OAuth", cfg.oauth_redirect_uri), kv("URL de retorno de desautorização", cfg.deauthorize_url), kv("URL de solicitação de exclusão de dados", cfg.data_deletion_url)),
+      el("h2", { text: "Portal e automação" }),
+      el("div", { class: "kv" }, kv("Endereço do portal", cfg.portal_url), kv("API de ingestão (n8n ou agente gerador)", cfg.ingest_base + "/creatives")),
+      el("p", { class: "muted", text: w ? "Última execução do publicador: " + date(w.at) + " · " + w.published + " publicados, " + w.metrics + " métricas atualizadas" + (w.errors && w.errors.length ? ", " + w.errors.length + " erro(s): " + w.errors.slice(0, 3).join(" | ") : ", sem erros") + "."
+        : "O publicador ainda não rodou. Ele executa a cada 5 minutos." })));
+
+    var out = el("div", { class: "kv" }), name = el("input", { type: "text", placeholder: "Ex.: n8n produção" });
+    var role = el("select", null, el("option", { value: "ingest", text: "Ingestão (n8n, agente gerador)" }), el("option", { value: "admin", text: "Painel (acesso total)" }));
+    var list = el("div", { class: "rows" });
+    keys.keys.forEach(function (k) {
+      list.appendChild(el("div", { class: "row" },
+        el("span", { class: "main" }, el("b", { text: k.name + (k.id === keys.current ? " (em uso agora)" : "") }), el("span", { class: "muted", text: (k.role === "admin" ? "Painel" : "Ingestão") + " · criada " + date(k.created_at) + (k.last_used_at ? " · último uso " + date(k.last_used_at) : " · nunca usada") })),
+        el("span", { class: "side" }, k.revoked_at ? el("span", { class: "pill no", text: "Revogada" }) : k.id === keys.current ? null
+          : el("button", { class: "btn danger sm", type: "button", text: "Revogar", onclick: function () { api("POST", "/admin/keys/" + k.id + "/revoke").then(function () { toast("Chave revogada."); loadConfig(); }).catch(fail); } }))));
+    });
+    app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Chaves de acesso" }),
+      el("p", { class: "muted", text: "A chave completa só aparece uma vez, ao ser criada. Guarde em um gerenciador de senhas." }),
+      el("div", { class: "grid" }, field("Nome da chave", name), field("Tipo", role),
+        el("div", { class: "f", style: "align-content:end;justify-items:start" }, el("button", { class: "btn", type: "button", text: "Criar chave", onclick: function () {
+          api("POST", "/admin/keys", { name: name.value, role: role.value }).then(function (r) {
+            out.textContent = ""; out.appendChild(el("div", { class: "notice" }, el("span", { class: "label", text: "Chave criada (copie agora)" }), el("code", { text: r.key }), copyBtn(r.key)));
+          }).catch(fail);
+        } }))), out, list));
+  }
+
+  // ---------- inicio ----------
+  try { KEY = localStorage.getItem(STORE) || ""; } catch (e) {}
+  if (!API) { app.appendChild(el("p", { text: "config.js sem o endereço da API." })); }
+  else if (KEY) enter(); else gate();
+})();
+</script>
+</body>
+</html>
