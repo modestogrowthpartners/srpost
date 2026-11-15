@@ -2,7 +2,7 @@
 // acompanha os jobs, cuida das conexoes e atualiza metricas. Cada tentativa fica registrada em post_attempts.
 // Ritmo: no maximo um post por conta a cada ciclo, com intervalo minimo e teto diario por conta
 // (funcao account_next_allowed) e pausa da conta quando a rede sinaliza suspeita de spam.
-import { db, must, one } from "./core.ts";
+import { db, getSetting, must, one, SUPABASE_URL } from "./core.ts";
 import * as ig from "./instagram.ts";
 import * as up from "./uploadpost.ts";
 import { AccountRow, adapterFor, classifyError, CreativeRow, DeferError, Failure, PublishJob, ReconnectError } from "./publishers.ts";
@@ -113,6 +113,33 @@ async function handleFailure(post: any, account: AccountRow | null, phase: "star
 
 const plainFailure = (code: string, message: string): Failure => ({ kind: "retry", minutes: 10, maxAttempts: 3, code, message, detail: {} });
 
+// Story de imagem sai em 9:16 (1080x1920). Imagem 4:5, quadrada ou paisagem e ajustada pela funcao "render"
+// antes de ir para a rede: a arte inteira, centralizada, sem corte. O original fica em creatives.fit_source.
+class StoryFitError extends Error {
+  constructor(message: string, public fatal: boolean) { super(message); }
+}
+async function ensureStory916(post: any, job: PublishJob) {
+  const { data: c } = await db.from("creatives").select("media_url, fit_source").eq("id", post.creative_id).eq("client_id", post.client_id).maybeSingle();
+  if (!c || c.fit_source) return;
+  let status = 0, body: any = null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/render`, {
+      method: "POST", headers: { "content-type": "application/json", "x-worker-secret": (await getSetting("worker_secret")) ?? "" },
+      body: JSON.stringify({ client_id: post.client_id, fit: { url: c.media_url } }), signal: AbortSignal.timeout(60_000),
+    });
+    status = res.status; body = await res.json().catch(() => null);
+  } catch (e) {
+    throw new StoryFitError(`Não foi possível ajustar o story para 9:16: ${e instanceof Error ? e.message : e}`, false);
+  }
+  // 400 e 422: a imagem nao serve (fora do armazenamento ou formato que nao da para ler). Tentar de novo nao muda nada.
+  if (!body?.ok) throw new StoryFitError(`Não foi possível ajustar o story para 9:16: ${body?.message ?? "HTTP " + status}`, status === 400 || status === 422);
+  if (!body.fitted) { await db.from("creatives").update({ fit_source: c.media_url }).eq("id", post.creative_id).is("fit_source", null); return; }
+  must(await db.from("creatives").update({ media_url: body.url, fit_source: c.media_url }).eq("id", post.creative_id).is("fit_source", null));
+  job.creative.media_url = body.url;
+  console.log(JSON.stringify({ event: "story_fit", post_id: post.id, from: c.media_url, to: body.url, band: body.band }));
+}
+const storyFailure = (e: StoryFitError): Failure => ({ kind: e.fatal ? "fatal" : "retry", minutes: 10, maxAttempts: 3, code: "story_9x16", message: e.message, detail: { classe: "ajuste do story para 9:16" } });
+
 async function startJobs(sum: Summary) {
   // Posts que ficaram em processing sem job (execucao anterior interrompida) voltam para a fila.
   await db.from("posts").update({ status: "scheduled" }).eq("status", "processing").is("container_id", null);
@@ -124,6 +151,7 @@ async function startJobs(sum: Summary) {
       if (!account) throw new ReconnectError("Conta não conectada.", "sem_conta");
       const adapter = adapterFor(account);
       const job = await jobFor(post, account);
+      if (job.creative.format === "story" && job.creative.kind === "image") await ensureStory916(post, job);
       // Limite informado pela propria rede (Meta: publicacoes em 24 horas). Atingido, o post espera.
       const quota = adapter.quota ? await adapter.quota(job) : null;
       if (quota && quota.used >= quota.total) {
@@ -135,7 +163,7 @@ async function startJobs(sum: Summary) {
       }).eq("id", post.id);
       sum.started = (sum.started as number) + 1;
     } catch (e) {
-      await handleFailure(post, account, "start", classifyError(e), sum);
+      await handleFailure(post, account, "start", e instanceof StoryFitError ? storyFailure(e) : classifyError(e), sum);
     }
   }
 }

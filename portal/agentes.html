@@ -1,0 +1,1709 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sr. Post | Central de agentes</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: central de agentes do time. Uma coluna; um cartao por agente; as telas trocam pelo hash da URL.
+   Mesma identidade do painel (admin.html) e do portal. */
+:root {
+  color-scheme: light;
+  --bg: #F4F7FA; --soft: #E4E9EF; --card: #FFFFFF; --ink: #0B0F14; --muted: #4E5B6B; --line: #B5C0CD;
+  --blue: #668EC2; --sky: #DCE6F2; --butter: #FFA070; --butter-soft: #FFE3D3; --approve: #13243B;
+  --error: #B3361F; --error-soft: #F7DDD6;
+  --display: "Chakra Petch", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 0.9rem; line-height: 1.5; overflow-wrap: break-word; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; } h3 { font-size: 1rem; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+img, video { max-width: 100%; }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+legend { padding: 0; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.wrap { width: 100%; max-width: 1180px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { border-bottom: 1.5px solid var(--ink); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 54px; padding-block: 8px; }
+.top b { font-family: var(--display); font-size: 1.15rem; }
+.top nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.top nav .btn[aria-current="page"] { background: var(--ink); color: #FFF; }
+.sub { font-size: 0.8rem; font-family: var(--body); font-weight: 400; }
+main { padding-block: 24px 64px; display: grid; gap: 18px; }
+.label { font-family: var(--display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.hint { font-size: 0.78rem; color: var(--muted); }
+.hint.bad { color: var(--error); font-weight: 700; }
+.panel { display: grid; gap: 14px; padding: 18px; border: 1.5px solid var(--ink); border-radius: 16px; background: var(--card); min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 999px; background: var(--ink); color: #FFF; font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
+.btn:hover { background: var(--approve); }
+.btn.ghost { background: var(--card); color: var(--ink); }
+.btn.ghost:hover { background: var(--soft); }
+.btn.sm { min-height: 32px; padding: 0 12px; font-size: 0.78rem; }
+.btn.danger { background: var(--card); color: var(--error); border-color: var(--error); }
+.btn.danger:hover { background: var(--error-soft); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.f { display: grid; gap: 4px; min-width: 0; align-content: start; }
+.f.wide { grid-column: 1 / -1; }
+input[type=text], input[type=password], input[type=number], input[type=url], textarea, select { width: 100%; min-height: 40px; padding: 8px 12px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--bg); }
+textarea { min-height: 76px; resize: vertical; }
+input:disabled, textarea:disabled, select:disabled { opacity: 0.5; }
+[aria-invalid="true"] { border-color: var(--error) !important; background: var(--error-soft) !important; }
+.pill { display: inline-flex; align-items: center; min-height: 22px; max-width: 100%; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 999px; font-family: var(--display); font-weight: 600; font-size: 0.72rem; background: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill.ok { background: var(--approve); color: #FFF; } .pill.wait { background: var(--sky); } .pill.fix { background: var(--butter); } .pill.demo { background: var(--butter-soft); }
+.pill.no { background: var(--error-soft); color: var(--error); border-color: var(--error); }
+.rows { display: grid; gap: 8px; }
+.side { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; border-radius: 8px; background: var(--soft); overflow-wrap: anywhere; display: block; user-select: all; }
+.notice { padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--sky); font-size: 0.85rem; overflow-wrap: anywhere; }
+.notice.warn { background: var(--butter-soft); } .notice.bad { background: var(--error-soft); border-color: var(--error); }
+.note { padding: 6px 10px; border-left: 3px solid var(--butter); background: var(--bg); font-size: 0.82rem; overflow-wrap: anywhere; }
+.check { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.check input { width: 18px; height: 18px; flex: none; margin: 2px 0 0; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gate { min-height: 70vh; display: grid; place-content: center; gap: 12px; justify-items: center; text-align: center; }
+.gate form { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: min(100%, 460px); }
+.gate input { flex: 1 1 240px; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: #FFF; font-size: 0.85rem; z-index: 30; }
+#toast.bad { background: var(--error); }
+
+/* Central */
+.cards { display: grid; gap: 14px; }
+.agent h2 a { text-decoration: none; }
+.agent h2 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.cols { display: grid; gap: 14px 22px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.col { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.items { display: grid; gap: 6px; min-width: 0; }
+.item { display: grid; gap: 4px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 0.82rem; overflow-wrap: anywhere; min-width: 0; text-decoration: none; }
+a.item:hover { background: var(--sky); border-color: var(--ink); }
+.item.err { border-color: var(--error); background: var(--error-soft); }
+.item .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; color: var(--muted); font-size: 0.76rem; }
+.item.err .meta { color: var(--ink); }
+.track { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+.track i { height: 6px; border-radius: 3px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+.track i.done { background: var(--ink); box-shadow: none; }
+.track i.now { background: var(--butter); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.track i.bad { background: var(--error); box-shadow: none; }
+.switch { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0; border: 0; background: none; font-weight: 700; font-size: 0.8rem; text-align: left; }
+.switch i { position: relative; flex: none; width: 44px; height: 24px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--soft); transition: background 0.15s; }
+.switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); transition: transform 0.15s; }
+.switch[aria-checked="true"] i { background: var(--butter); }
+.switch[aria-checked="true"] i::after { transform: translateX(20px); }
+.switch[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.bulkrow { display: grid; gap: 6px 16px; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); padding: 10px 0; border-top: 1.5px solid var(--soft); align-items: start; }
+.bulkctl { display: grid; gap: 4px; min-width: 0; }
+.bulkctl.off { opacity: 0.55; }
+
+/* Chips (temas e horarios) */
+.chipbox { display: grid; gap: 6px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 2px; min-height: 30px; max-width: 100%; padding: 0 4px 0 10px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--sky); font-size: 0.8rem; overflow-wrap: anywhere; }
+.chip button { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none; font-weight: 700; line-height: 1; }
+.chip button:hover { background: var(--card); }
+.chipadd { display: flex; gap: 6px; min-width: 0; }
+.chipadd input { flex: 1 1 auto; min-width: 0; }
+
+/* Assistente */
+.steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.steps button { min-height: 32px; padding: 0 12px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--card); font-family: var(--display); font-weight: 600; font-size: 0.78rem; }
+.steps button[aria-current="step"] { background: var(--ink); color: #FFF; }
+.steps button:disabled { border-color: var(--line); color: var(--muted); cursor: default; }
+.grp { display: grid; gap: 12px; padding-top: 14px; border-top: 1.5px solid var(--soft); }
+.grp > legend { font-family: var(--display); font-weight: 700; font-size: 1rem; float: left; width: 100%; }
+.radio { display: grid; gap: 8px; }
+.radio .check { padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); }
+.radio .check:has(input:checked) { border-color: var(--ink); background: var(--sky); }
+.radio .check:has(input:disabled) { opacity: 0.6; }
+.review { display: grid; gap: 10px; }
+.review .item b { font-family: var(--display); }
+.kvl { display: grid; gap: 2px; min-width: 0; }
+
+/* Agente: execucoes */
+.run { border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); min-width: 0; }
+.run.open { border-color: var(--ink); background: var(--card); }
+.run > button { width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 12px 14px; border: 0; border-radius: 12px; background: none; text-align: left; }
+.run > button:hover { background: var(--sky); }
+.run .main { display: grid; gap: 2px; min-width: 0; flex: 1 1 240px; overflow-wrap: anywhere; }
+.run .body { display: grid; gap: 16px; padding: 6px 14px 14px; min-width: 0; }
+.sec { display: grid; gap: 6px; min-width: 0; }
+.sec.part { padding-top: 14px; border-top: 1.5px solid var(--soft); }
+.tl { display: grid; margin-left: 5px; padding-left: 16px; border-left: 2px solid var(--line); }
+.tl li { position: relative; display: grid; gap: 2px; padding: 6px 0; font-size: 0.82rem; overflow-wrap: anywhere; min-width: 0; }
+.tl li::before { content: ""; position: absolute; left: -23px; top: 11px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 2px solid var(--ink); }
+.tl li.ok::before { background: var(--ink); }
+.tl li.falhou::before { background: var(--error); border-color: var(--error); }
+.tl li.aguardando::before { background: var(--butter); }
+.tl li.iniciou::before { background: var(--sky); }
+.tl .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 0.76rem; color: var(--muted); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs a { display: block; width: 72px; aspect-ratio: 4 / 5; border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--ink); }
+.thumbs img, .thumbs video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.upl { display: grid; gap: 10px; padding: 12px; border: 1.5px dashed var(--ink); border-radius: 12px; background: var(--butter-soft); min-width: 0; }
+.upl input[type=file] { max-width: 100%; }
+details > summary { cursor: pointer; font-weight: 700; font-size: 0.82rem; }
+pre.json { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--soft); font-family: var(--body); font-size: 0.76rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Chat */
+.thread { display: grid; gap: 10px; min-width: 0; }
+.msg { display: grid; gap: 8px; padding: 12px 14px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--card); min-width: 0; overflow-wrap: anywhere; }
+.msg.me { justify-self: end; max-width: min(100%, 680px); background: var(--ink); color: #FFF; }
+.msg.bad { background: var(--error-soft); border-color: var(--error); }
+.logs { display: grid; gap: 4px; font-size: 0.78rem; }
+.log { display: grid; gap: 2px 10px; grid-template-columns: 120px minmax(0, 150px) minmax(0, 120px) minmax(0, 90px) minmax(0, 1fr); padding: 6px 8px; border-radius: 8px; background: var(--soft); min-width: 0; }
+.log.falhou { background: var(--error-soft); }
+.ask { display: grid; gap: 8px; }
+.ask .line { display: flex; gap: 8px; align-items: flex-end; }
+.ask textarea { min-height: 44px; flex: 1 1 auto; min-width: 0; }
+
+@media (max-width: 760px) {
+  .top { position: static; }
+  .bulkrow { grid-template-columns: minmax(0, 1fr); }
+  .log { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .log .m { grid-column: 1 / -1; }
+  .ask .line { flex-wrap: wrap; }
+  .ask .line .btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <b>Sr. Post <span class="sub muted">central de agentes</span></b>
+  <nav id="navbar" hidden aria-label="Telas da central">
+    <a class="btn ghost sm" href="#central" data-v="central">Central</a>
+    <a class="btn ghost sm" href="#novo" data-v="novo">Novo agente</a>
+    <a class="btn ghost sm" href="#vivo" data-v="vivo">Ao vivo</a>
+    <a class="btn ghost sm" href="#chat" data-v="chat">Chat</a>
+    <a class="btn ghost sm" href="admin.html">Clientes</a>
+    <button class="btn ghost sm" type="button" id="navOut">Sair</button>
+  </nav>
+</div></header>
+<main class="wrap" id="app"></main>
+<div id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script src="agentes-live.js"></script>
+<script>
+(function () {
+  "use strict";
+  var API = (window.SRPOST && window.SRPOST.api) || "", STORE = "srpost.admin.key", KEY = "";
+  var app = document.getElementById("app"), navbar = document.getElementById("navbar");
+  var MAX_BYTES = 50 * 1024 * 1024;
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var LINK = /^https?:\/\/[^\s]+\.[^\s]+$/i;
+  var CENTRAL_AT = 0;
+  var CENTRAL = null;   // ultima resposta de GET /admin/agents (motor + agentes), reaproveitada entre as telas
+  var RUN_CLIENT = {};  // execucao -> cliente, aprendido nas respostas do ao vivo (para abrir a execucao no agente certo)
+  var WZ = null;        // rascunho do assistente: sobrevive a troca de tela, some ao sair ou recarregar
+  var CHAT = { msgs: [], busy: false, since: 0 };
+  var view = null, uid = 0;
+
+  var STEPS = ["planejar", "roteiro", "copy", "midia", "aprovacao", "publicar"];
+  var STEP = { planejar: "Planejar", roteiro: "Roteiro", copy: "Copy", midia: "Gerar mídia", aprovacao: "Fila de aprovação", publicar: "Publicar", config: "Configuração" };
+  var NET = { instagram: "Instagram", tiktok: "TikTok" };
+  var FMT = { reel: "Reel", carrossel: "Carrossel", imagem: "Imagem", story: "Story" };
+  var FMT_OPTS = [["reel", "Reel (vídeo vertical)"], ["carrossel", "Carrossel (2 a 10 imagens)"], ["imagem", "Imagem (post único)"], ["story", "Story"]];
+  var NET_OPTS = [["instagram", "Instagram"], ["tiktok", "TikTok"]];
+  var RUN_STATUS = { rodando: ["Rodando", "wait"], aguardando_midia: ["Aguardando mídia", "fix"], aguardando_aprovacao: ["Aguardando aprovação", "wait"], publicando: ["Publicando", "wait"], concluido: ["Concluído", "ok"], falhou: ["Falhou", "no"], cancelado: ["Cancelado", ""] };
+  var ACTIVE = ["rodando", "aguardando_midia", "aguardando_aprovacao", "publicando"];
+  var EV_STATUS = { iniciou: "iniciou", ok: "concluiu", falhou: "falhou", aguardando: "aguardando", info: "registro", pulou: "pulou" };
+  var AGENT_STATUS = { ativo: ["Agente ativo", "ok"], pausado: ["Agente pausado", ""], configurando: ["Em configuração", "fix"] };
+  var VOICE = ["usa", "evita", "cta", "provas", "proibido", "emoji"];
+  var TZ_OPTS = [["America/Sao_Paulo", "Brasília (São Paulo, Rio, Sul, Nordeste em geral)"], ["America/Manaus", "Manaus (1 hora a menos que Brasília)"], ["America/Cuiaba", "Cuiabá e Campo Grande (1 hora a menos)"],
+    ["America/Rio_Branco", "Rio Branco (2 horas a menos)"], ["America/Noronha", "Fernando de Noronha (1 hora a mais)"]];
+  var TITLES = { central: "Central de agentes", novo: "Novo agente", vivo: "Ao vivo", chat: "Chat de diagnóstico", agente: "Agente" };
+
+  // ---------- utilitarios ----------
+  function el(tag, attrs) {
+    var n = document.createElement(tag), i, k;
+    if (attrs) for (k in attrs) {
+      if (attrs[k] == null || attrs[k] === false) continue;
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else if (k in n && k !== "list") { try { n[k] = attrs[k]; } catch (e) { n.setAttribute(k, attrs[k]); } }
+      else n.setAttribute(k, attrs[k]);
+    }
+    for (i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null || c === false) continue; n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
+    return n;
+  }
+  function toast(msg, bad) {
+    var t = document.getElementById("toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, bad ? 8000 : 4000);
+  }
+  // ms (opcional) limita a espera: o chat pode levar ate 2 minutos, o resto usa o tempo padrao do navegador.
+  function api(method, path, body, ms) {
+    var ctl = ms && window.AbortController ? new AbortController() : null, timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+    return fetch((window.SRPOST.base ? window.SRPOST.base(path) : API) + path, { method: method, headers: { "x-admin-key": KEY, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { clearTimeout(timer); return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j.message || "Erro " + r.status + "."); e.status = r.status; e.code = j.error; throw e; } return j; }); },
+        function (err) { clearTimeout(timer); throw new Error(err && err.name === "AbortError" ? "A API não respondeu a tempo. Tente de novo." : "Sem conexão com a API."); });
+  }
+  function fail(e) { if (e.status === 401) logout("Esta chave não é mais aceita. Entre de novo."); else toast(e.message, true); }
+  function nid() { return "f" + (++uid); }
+  // Botao com pedido em andamento: fica marcado como ocupado, mas continua focavel (disabled derruba o foco do teclado).
+  function hold(b, on) { if (on) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled"); }
+  function held(b) { return b.getAttribute("aria-disabled") === "true"; }
+  function pill(text, cls) { return el("span", { class: "pill" + (cls ? " " + cls : ""), text: text }); }
+  function note(text, kind) { return el("div", { class: "notice" + (kind ? " " + kind : ""), text: text }); }
+  function errorBox(msg, retry) {
+    return el("div", { class: "notice bad", role: "alert" }, el("p", { text: msg }), retry ? el("p", { style: "margin-top:8px" }, el("button", { class: "btn sm", type: "button", text: "Tentar de novo", onclick: retry })) : null);
+  }
+  // Campo com rotulo, dica e mensagem de erro ligados ao controle (aria-describedby).
+  function field(label, input, o) {
+    o = o || {}; var id = input.id || (input.id = nid());
+    var hint = o.hint ? el("span", { class: "hint", id: id + "h", text: o.hint }) : null, err = el("span", { class: "hint bad", id: id + "e", hidden: true });
+    input.setAttribute("aria-describedby", (hint ? id + "h " : "") + id + "e"); input._err = err;
+    return el("div", { class: "f" + (o.wide ? " wide" : "") }, el("label", { class: "label", htmlFor: id, text: label }), input, hint, err);
+  }
+  // Grupo de controles (caixas de marcar, chips) com um rotulo so.
+  function group(label, node, o) {
+    o = o || {}; var id = nid(), err = el("span", { class: "hint bad", hidden: true }); node._err = err;
+    return el("div", { class: "f" + (o.wide ? " wide" : ""), role: "group", "aria-labelledby": id }, el("span", { class: "label", id: id, text: label }), node, o.hint ? el("span", { class: "hint", text: o.hint }) : null, err);
+  }
+  function setErr(node, msg) {
+    var e = node && node._err; if (!e) return; e.textContent = msg || ""; e.hidden = !msg;
+    if (node.matches("input, textarea, select")) { if (msg) node.setAttribute("aria-invalid", "true"); else node.removeAttribute("aria-invalid"); }
+  }
+  function copyBtn(text, label) {
+    label = label || "Copiar";
+    return el("button", { class: "btn ghost sm", type: "button", text: label, onclick: function (ev) {
+      var b = ev.currentTarget;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { b.textContent = "Copiado"; setTimeout(function () { b.textContent = label; }, 1500); },
+        function () { toast("Selecione o texto e copie manualmente.", true); });
+    } });
+  }
+  function checks(options, selected, onchange) {
+    var boxes = {}, wrap = el("div", { class: "checks" });
+    options.forEach(function (o) {
+      boxes[o[0]] = el("input", { type: "checkbox", checked: (selected || []).indexOf(o[0]) >= 0, onchange: function () { if (onchange) onchange(); } });
+      wrap.appendChild(el("label", { class: "check" }, boxes[o[0]], el("span", { text: o[1] })));
+    });
+    return { node: wrap, value: function () { return options.map(function (o) { return o[0]; }).filter(function (v) { return boxes[v].checked; }); } };
+  }
+  function select(options, value, attrs) {
+    var s = el("select", attrs || null);
+    options.forEach(function (o) { s.appendChild(el("option", { value: o[0], text: o[1], disabled: !!o[2] })); });
+    if (value != null) s.value = value;
+    return s;
+  }
+  function normTime(t) {
+    var m = /^\s*(\d{1,2})\s*(?:[:hH.]\s*(\d{2})?)?\s*$/.exec(t) || /^\s*(\d{2})(\d{2})\s*$/.exec(t);
+    if (!m) return null;
+    var h = +m[1], mi = m[2] == null ? 0 : +m[2];
+    return h > 23 || mi > 59 ? null : (h < 10 ? "0" : "") + h + ":" + (mi < 10 ? "0" : "") + mi;
+  }
+  // Lista editavel de itens curtos (temas, horarios). Enter, virgula ou o botao adicionam; o x remove.
+  function chipInput(o) {
+    var vals = (o.values || []).slice(), list = el("span", { class: "chips" });
+    var input = el("input", { type: "text", placeholder: o.placeholder || "", autocomplete: "off", maxLength: 400, "aria-label": o.label });
+    var add = el("button", { class: "btn ghost sm", type: "button", text: "Adicionar" });
+    var node = el("div", { class: "chipbox" }, list, el("span", { class: "chipadd" }, input, add));
+    function changed() { if (o.onchange) o.onchange(vals.slice()); }
+    function paint() {
+      list.textContent = "";
+      vals.forEach(function (v) {
+        list.appendChild(el("span", { class: "chip" }, v, el("button", { type: "button", "aria-label": "Remover " + v, text: "×", disabled: input.disabled, onclick: function () {
+          vals = vals.filter(function (x) { return x !== v; }); paint(); changed(); input.focus();
+        } })));
+      });
+    }
+    function commit() {
+      var raw = input.value.split(/[,;\n]/).map(function (x) { return x.trim(); }).filter(Boolean), bad = [], over = false, before = vals.join("\n");
+      if (!raw.length) { input.value = ""; return true; }
+      raw.forEach(function (t) {
+        var v = o.norm ? o.norm(t) : t.slice(0, o.itemMax || 60);
+        if (v == null) { bad.push(t); return; }
+        if (vals.indexOf(v) >= 0) return;
+        if (o.max && vals.length >= o.max) { bad.push(t); over = true; return; }
+        vals.push(v);
+      });
+      if (o.sort) vals.sort();
+      input.value = bad.join(", ");
+      if (vals.join("\n") !== before) { paint(); changed(); }
+      setErr(node, bad.length ? (over ? "Limite de " + o.max + " itens. Remova um para incluir outro." : (o.invalid || "Valor inválido.")) : "");
+      return !bad.length;
+    }
+    input.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === ",") { ev.preventDefault(); commit(); } });
+    input.addEventListener("blur", commit);
+    add.addEventListener("click", function () { commit(); input.focus(); });
+    paint();
+    return { node: node, input: input, value: function () { commit(); return vals.slice(); }, repaint: paint };
+  }
+  function timeChips(values, onchange) {
+    return chipInput({ values: values, placeholder: "12:33", label: "Novo horário (HH:MM)", norm: normTime, sort: true, max: 6, onchange: onchange,
+      invalid: "Horário inválido. Use HH:MM, de 00:00 a 23:59 (ex.: 12:33)." });
+  }
+  function setDisabled(node, off) {
+    Array.prototype.forEach.call(node.querySelectorAll("input, select, textarea, button"), function (x) { x.disabled = off; });
+    if (node.matches("input, select, textarea, button")) node.disabled = off;
+  }
+  // Troca um bloco por outro sem perder o foco do teclado (as telas se atualizam sozinhas).
+  function swap(oldNode, newNode) {
+    var a = document.activeElement, at = -1;
+    if (a && oldNode.contains(a)) at = Array.prototype.indexOf.call(oldNode.querySelectorAll("a, button, input, select, textarea, summary"), a);
+    oldNode.parentNode.replaceChild(newNode, oldNode);
+    if (at >= 0) { var t = newNode.querySelectorAll("a, button, input, select, textarea, summary")[at]; if (t) t.focus({ preventScroll: true }); }
+  }
+  function isInt(v, min, max) { return /^\d+$/.test(String(v).trim()) && +v >= min && +v <= max; }
+  function sameSet(a, b) { return a.length === b.length && a.every(function (x) { return b.indexOf(x) >= 0; }); }
+
+  // ---------- datas e numeros (pt-BR, no fuso do cliente quando o dado e de um cliente) ----------
+  function fmt(iso, tz, o) {
+    if (!iso) return ""; var d = new Date(iso); if (isNaN(d.getTime())) return "";
+    o = Object.assign({}, o); if (tz) o.timeZone = tz;
+    try { return d.toLocaleString("pt-BR", o); } catch (e) { delete o.timeZone; return d.toLocaleString("pt-BR", o); }
+  }
+  function when(iso, tz) { return fmt(iso, tz, { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  function date(iso, tz) { return fmt(iso, tz, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  function stamp(iso, tz) { return fmt(iso, tz, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+  function clock(d) { return d.toLocaleTimeString("pt-BR"); }
+  function num(v) { return new Intl.NumberFormat("pt-BR").format(v == null ? 0 : v); }
+  function plural(n, one, many) { return num(n || 0) + " " + (n === 1 ? one : many); }
+  function ago(ms) {
+    var s = Math.max(0, Math.round(ms / 1000)); if (s < 90) return "há " + s + " s";
+    var m = Math.round(s / 60); if (m < 90) return "há " + m + " min";
+    var h = Math.round(m / 60); return h < 48 ? "há " + h + " h" : "há " + num(Math.round(h / 24)) + " dias";
+  }
+  function dur(ms) {
+    if (ms == null) return ""; if (ms < 1000) return num(Math.round(ms)) + " ms";
+    var s = ms / 1000; if (s < 60) return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(s) + " s";
+    var m = Math.floor(s / 60); return m < 60 ? m + " min " + Math.round(s - m * 60) + " s" : Math.floor(m / 60) + " h " + (m % 60) + " min";
+  }
+  // As mensagens dos eventos trazem datas em ISO (ex.: "Agendado para 2026-11-15T15:33:00Z"). Na tela elas saem legiveis.
+  function plain(msg, tz) {
+    return String(msg || "").replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})/g, function (iso) { return when(iso, tz) || iso; });
+  }
+  function tzName(tz) { return !tz || tz === "America/Sao_Paulo" ? "horário de Brasília" : "fuso de " + String(tz).split("/").pop().replace(/_/g, " "); }
+  function genOk(kind, name) { var g = CENTRAL && CENTRAL.engine && CENTRAL.engine.generators; return !!(g && g[kind] && g[kind][name]); }
+  function runTitle(r) { return r.titulo || (r.copy && r.copy.titulo) || r.tema || (r.plan && r.plan.tema) || "Tema ainda não definido"; }
+  function runMode(r) { return (r.media_job && r.media_job.mode) || r.midia_modo || null; }
+
+  function accountPills(list, nets, tz) {
+    var out = [];
+    ["instagram", "tiktok"].forEach(function (p) {
+      var a = (list || []).filter(function (x) { return x.platform === p; })[0];
+      if (!a && (nets || []).indexOf(p) < 0) return;
+      var paused = a && a.cooldown_until && new Date(a.cooldown_until) > new Date();
+      var txt = !a ? NET[p] + ": não conectado" : a.status === "connected"
+        ? NET[p] + ": " + (a.simulated ? "conta simulada" : "@" + (a.username || "conta")) + (paused ? " (em pausa até " + date(a.cooldown_until, tz) + ")" : "")
+        : NET[p] + ": " + (a.status === "revoked" ? "acesso revogado" : "conexão expirada");
+      out.push(pill(txt, !a ? "" : a.status === "connected" ? (paused ? "wait" : a.simulated ? "demo" : "ok") : "no"));
+    });
+    return out;
+  }
+  // Etapa atual de uma execucao: seis marcas, a da vez em destaque. Reflete o campo step gravado, sem animacao.
+  function track(run) {
+    var steps = (CENTRAL && CENTRAL.engine && CENTRAL.engine.steps) || STEPS, at = steps.indexOf(run.step);
+    var t = el("span", { class: "track", role: "img", "aria-label": (at < 0 ? "Etapa: " : "Etapa " + (at + 1) + " de " + steps.length + ": ") + (STEP[run.step] || run.step) });
+    steps.forEach(function (st, i) { t.appendChild(el("i", { class: i < at ? "done" : i > at ? "" : run.status === "falhou" ? "bad" : run.status === "concluido" ? "done" : "now" })); });
+    return t;
+  }
+  function autoSwitch(clientId, name, on, done) {
+    var b = el("button", { class: "switch", type: "button", role: "switch", "aria-checked": on ? "true" : "false", "aria-label": (on ? "Automação ligada" : "Automação pausada") + ", " + name },
+      el("i"), el("span", { text: on ? "Automação ligada" : "Automação pausada" }));
+    b.addEventListener("click", function () {
+      if (held(b)) return; var next = !on; hold(b, true);
+      api("PATCH", "/admin/agents/" + clientId, { automation: next ? "ligada" : "pausada" }).then(function (r) {
+        toast((next ? "Automação ligada" : "Automação pausada") + " em " + name + ". Configuração na versão " + r.config_version + "."); done();
+      }).catch(function (e) { hold(b, false); fail(e); });
+    });
+    return b;
+  }
+  function loadCentral() { return api("GET", "/admin/agents").then(function (d) { CENTRAL = d; CENTRAL_AT = Date.now(); return d; }); }
+  function fresh() { return !!CENTRAL && Date.now() - CENTRAL_AT < 5000; }
+  function setText(node, text) { if (node.textContent !== text) node.textContent = text; }
+  function liveAgents(list) { return (list || []).map(function (a) { return { client_id: a.client.id, name: a.client.name, is_demo: !!a.client.is_demo, automation: a.agent.automation }; }); }
+
+  // ---------- acesso ----------
+  function logout(msg) {
+    KEY = ""; try { localStorage.removeItem(STORE); } catch (e) {}
+    if (view) view.stop(); view = null; CENTRAL = null; WZ = null; CHAT = { msgs: [], busy: false, since: 0 }; RUN_CLIENT = {};
+    navbar.hidden = true; gate(typeof msg === "string" ? msg : null);
+  }
+  function gate(msg) {
+    app.textContent = ""; document.title = "Central de agentes | Sr. Post";
+    var input = el("input", { type: "password", id: "adminKey", placeholder: "srp_adm_...", autocomplete: "off", "aria-label": "Chave do painel" });
+    app.appendChild(el("section", { class: "gate" }, el("h1", { text: "Central de agentes" }),
+      el("p", { class: "muted", role: "status", text: msg || "Entre com a sua chave de acesso do painel. É a mesma da página Clientes." }),
+      el("form", { onsubmit: function (ev) { ev.preventDefault(); KEY = input.value.trim(); if (KEY.length < 20) { KEY = ""; return toast("A chave tem pelo menos 20 caracteres.", true); } enter(); } }, input, el("button", { class: "btn", type: "submit", text: "Entrar" }))));
+  }
+  function enter() {
+    app.textContent = ""; app.appendChild(el("p", { class: "muted", text: "Carregando os agentes..." }));
+    loadCentral().then(function () {
+      try { localStorage.setItem(STORE, KEY); } catch (e) {}
+      navbar.hidden = false; route();
+    }).catch(function (e) {
+      if (e.status === 401) { KEY = ""; try { localStorage.removeItem(STORE); } catch (x) {} gate("Chave inválida. Confira e tente de novo."); return; }
+      app.textContent = ""; app.appendChild(errorBox("Não foi possível carregar a central: " + e.message, enter));
+    });
+  }
+  document.getElementById("navOut").addEventListener("click", function () { logout(); });
+
+  // ---------- telas ----------
+  // Cada tela devolve um escopo: os temporizadores e a visao ao vivo param quando a tela sai.
+  function scope() {
+    var s = { alive: true, timers: [], ends: [] };
+    s.every = function (ms, fn) { s.timers.push(setInterval(function () { if (s.alive && !document.hidden) fn(); }, ms)); };
+    s.onStop = function (fn) { s.ends.push(fn); };
+    s.stop = function () { s.alive = false; s.timers.forEach(clearInterval); s.ends.forEach(function (f) { try { f(); } catch (e) {} }); };
+    return s;
+  }
+  function setNav(name) {
+    Array.prototype.forEach.call(navbar.querySelectorAll("a[data-v]"), function (a) {
+      if (a.getAttribute("data-v") === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+  }
+  function route(ev) {
+    if (!KEY) return;
+    var seg = location.hash.replace(/^#\/?/, "").split("/"), name = ["novo", "vivo", "chat", "agente"].indexOf(seg[0]) >= 0 ? seg[0] : "central";
+    if (name === "agente" && !UUID.test(seg[1] || "")) name = "central";
+    if (name === "agente" && view && view.agentId === seg[1]) { view.go(seg[2]); return; }
+    if (view) view.stop(); view = null;
+    app.textContent = ""; setNav(name === "agente" ? "central" : name); document.title = TITLES[name] + " | Sr. Post"; window.scrollTo(0, 0);
+    view = name === "novo" ? viewNovo() : name === "vivo" ? viewVivo(seg[1]) : name === "chat" ? viewChat() : name === "agente" ? viewAgente(seg[1], seg[2]) : viewCentral();
+    // Ao trocar de tela pelo menu, o foco vai para o titulo da nova tela.
+    var h = ev && app.querySelector("h1"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }
+  window.addEventListener("hashchange", route);
+
+  // ---------- ao vivo: ponte com agentes-live.js ----------
+  function liveLoad(after, clientId) {
+    var q = []; if (after) q.push("after=" + encodeURIComponent(after)); if (clientId) q.push("client_id=" + encodeURIComponent(clientId));
+    return api("GET", "/admin/agents/live" + (q.length ? "?" + q.join("&") : "")).then(function (d) {
+      (d.runs || []).forEach(function (r) { RUN_CLIENT[r.id] = r.client_id; });
+      (d.events || []).forEach(function (e) { if (e.run_id) RUN_CLIENT[e.run_id] = e.client_id; });
+      return d;
+    }, function (e) { if (e.status === 401) fail(e); throw e; });
+  }
+  function openRun(runId) {
+    if (!UUID.test(String(runId || ""))) return;
+    var go = function (cid) { location.hash = "#agente/" + cid + "/" + runId; };
+    if (RUN_CLIENT[runId]) return go(RUN_CLIENT[runId]);
+    api("GET", "/admin/runs/" + runId).then(function (d) { go(d.run.client_id); }).catch(fail);
+  }
+  function mountLive(box, s, agents, clientId) {
+    var L = window.SrpLive; box.textContent = "";
+    if (!L || typeof L.mount !== "function") {
+      box.appendChild(note("A visão ao vivo não carregou: o arquivo agentes-live.js não está disponível nesta página. O restante da central funciona normalmente, e as execuções aparecem na lista de cada agente.", "warn"));
+      return null;
+    }
+    try {
+      var h = L.mount(box, { load: liveLoad, agents: agents, clientId: clientId || null, onRun: openRun, interval: 3000 });
+      s.onStop(function () { if (h && h.stop) h.stop(); });
+      return h || null;
+    } catch (e) {
+      box.textContent = ""; box.appendChild(note("A visão ao vivo falhou ao iniciar: " + (e && e.message ? e.message : e) + " O restante da central funciona normalmente.", "bad"));
+      return null;
+    }
+  }
+
+  // ---------- 1. Central ----------
+  function engineStrip(d) {
+    var e = d.engine || {}, g = e.generators || {}, t = g.text || {}, m = g.media || {}, lr = e.agents_last_run, now = new Date(d.now).getTime();
+    var age = lr && lr.at ? now - new Date(lr.at).getTime() : null, errs = lr && lr.errors ? lr.errors.length : 0;
+    var box = el("div", { class: "rows" });
+    box.appendChild(el("div", { class: "head" }, el("h2", { text: "Motor dos agentes" }), pill("versão " + (e.version || "não informada"))));
+    box.appendChild(el("p", { text: lr && lr.at
+      ? "Último ciclo do agendador: " + stamp(lr.at) + " (" + ago(age) + ", horário deste computador). " + plural(lr.created, "execução criada", "execuções criadas") + ", "
+        + plural(lr.steps, "etapa executada", "etapas executadas") + ", " + plural(lr.observed, "acompanhamento", "acompanhamentos") + (lr.deferred ? ", " + plural(lr.deferred, "adiada", "adiadas") : "")
+        + ", " + (errs ? plural(errs, "erro", "erros") : "sem erros") + (lr.ms != null ? ", em " + dur(lr.ms) : "") + "."
+      : "O agendador ainda não registrou nenhum ciclo." }));
+    if (!lr || !lr.at) box.appendChild(note("Sem ciclo registrado, nenhum agente anda sozinho. O agendador (pg_cron) deve chamar o motor a cada minuto: confira o agendamento no projeto do Supabase.", "warn"));
+    else if (age > 180000) box.appendChild(note("O agendador não roda " + ago(age) + ". O esperado é um ciclo por minuto. Enquanto ele estiver parado, nenhum agente avança: confira o agendamento (pg_cron) no projeto do Supabase.", "bad"));
+    if (errs) box.appendChild(note("Erros do último ciclo: " + lr.errors.slice(0, 3).join(" | ") + (errs > 3 ? " (e mais " + (errs - 3) + ")" : ""), "bad"));
+    var prov = el("div", { class: "cols" });
+    [["Claude (texto, roteiro e copy)", !!t.claude, t.claude ? (g.model ? "Modelo " + g.model + "." : "") : "Falta o segredo ANTHROPIC_API_KEY na Edge Function. Sem ele, o agente de cliente real para na primeira etapa e o chat responde por regras."],
+      ["Higgsfield (imagem e vídeo)", !!m.higgsfield, m.higgsfield ? "A VERIFICAR: ainda não testado com chave real." : "Falta a chave da API do Higgsfield nos segredos da Edge Function. A mídia segue no modo manual: o time envia pelo painel."],
+      ["Instagram (conexão e publicação)", !!e.instagram_configured, e.instagram_configured ? "" : "Faltam os segredos IG_APP_ID e IG_APP_SECRET. Os clientes ainda não conseguem conectar a conta."],
+      ["TikTok (conexão e publicação)", !!e.tiktok_configured, e.tiktok_configured ? "" : "Falta o segredo UPLOAD_POST_API_KEY (conta no provedor Upload-Post). Os posts de TikTok ficam agendados até lá."]
+    ].forEach(function (p) {
+      prov.appendChild(el("div", { class: "item" }, el("span", { class: "side" }, el("b", { text: p[0] }), pill(p[1] ? "disponível" : "falta configurar", p[1] ? "ok" : "fix")), p[2] ? el("span", { class: "muted", text: p[2] }) : null));
+    });
+    box.appendChild(prov);
+    return box;
+  }
+  // Cada pendencia vira uma acao: quem faz, onde e o que acontece depois.
+  function needItem(text, a, eng, refresh) {
+    var id = a.client.id, m = /^(Conectar|Reconectar) (Instagram|TikTok)$/.exec(text), out = el("div", { class: "item" }, el("b", { text: text }));
+    if (m) {
+      var net = m[2] === "TikTok" ? "tiktok" : "instagram", acc = (a.accounts || []).filter(function (x) { return x.platform === net; })[0];
+      if (acc && acc.last_error) out.appendChild(el("span", { class: "muted", text: "Motivo registrado: " + acc.last_error }));
+      if (a.client.is_demo) {
+        out.appendChild(el("span", { class: "muted", text: "Cliente de demonstração: ative a conta simulada. Ela não publica em rede nenhuma." }));
+        out.appendChild(el("span", null, el("button", { class: "btn ghost sm", type: "button", text: "Ativar " + m[2] + " simulado", onclick: function (ev) {
+          var b = ev.currentTarget; if (held(b)) return; hold(b, true);
+          api("POST", "/admin/clients/" + id + "/sim-account", { platform: net, mode: "ok" }).then(function () { toast(m[2] + " simulado ativado em " + a.client.name + "."); refresh(); }).catch(function (e) { hold(b, false); fail(e); });
+        } })));
+      } else {
+        var ready = net === "tiktok" ? eng.tiktok_configured : eng.instagram_configured;
+        out.appendChild(el("span", { class: "muted", text: ready ? "Quem conecta é o cliente, pelo link de conexão. Se o link se perdeu, gere outro na página Clientes: ele conecta na aba Agente do portal."
+          : "Primeiro o " + m[2] + " precisa ser configurado no projeto (veja o motor, acima). Depois o cliente conecta pelo link de conexão." }));
+        out.appendChild(el("span", null, el("a", { class: "btn ghost sm", href: "admin.html", text: "Abrir Clientes" })));
+      }
+    } else if (/^Enviar a mídia/.test(text)) {
+      var w = (a.active_runs || []).filter(function (r) { return r.status === "aguardando_midia" && r.midia_modo === "manual"; })[0];
+      out.appendChild(el("span", { class: "muted", text: "O roteiro está pronto e o briefing está na execução. O time envia o arquivo por lá." }));
+      out.appendChild(el("span", null, el("a", { class: "btn sm", href: "#agente/" + id + (w ? "/" + w.id : ""), text: "Ver briefing e enviar" })));
+    } else if (/^Cliente aprovar/.test(text)) {
+      out.appendChild(el("span", { class: "muted", text: "Depende do cliente: ele aprova no portal. Se demorar, vale lembrar o cliente pelo canal de sempre." }));
+    } else if (/^Preencher o contexto/.test(text)) {
+      out.appendChild(el("span", { class: "muted", text: "Sem contexto o agente escreve genérico. Diga o que a marca faz, o que vende e para quem." }));
+      out.appendChild(el("span", null, el("a", { class: "btn sm", href: "#agente/" + id + "/config", text: "Preencher contexto" })));
+    } else out.appendChild(el("span", null, el("a", { class: "btn ghost sm", href: "#agente/" + id, text: "Abrir agente" })));
+    return out;
+  }
+  function runItem(r, clientId, tz) {
+    var st = RUN_STATUS[r.status] || [r.status, ""];
+    return el("a", { class: "item", href: "#agente/" + clientId + "/" + r.id },
+      el("span", { class: "side" }, el("b", { text: (FMT[r.format] || r.format) + " · " + runTitle(r) }), r.simulated ? pill("Simulação", "demo") : null),
+      track(r),
+      el("span", { class: "meta" }, pill(st[0], st[1]), el("span", { text: "Etapa: " + (STEP[r.step] || r.step) }),
+        el("span", { text: r.slot_at ? "post de " + when(r.slot_at, tz) : "fora da agenda" }), r.revision ? el("span", { text: "versão " + (r.revision + 1) }) : null),
+      r.error && r.status !== "falhou" ? el("span", { class: "muted", text: "Última tentativa falhou: " + r.error }) : null);
+  }
+  function agentCard(a, d, sel, refresh) {
+    var c = a.client, ag = a.agent, id = c.id, tz = c.timezone || "America/Sao_Paulo", eng = d.engine || {}, st = AGENT_STATUS[ag.status] || [ag.status, ""], hid = "ag-" + id;
+    var box = el("input", { type: "checkbox", checked: sel.has(id), "aria-label": "Selecionar " + c.name + " para atualizar em lote", onchange: function () { sel.set(id, box.checked); } });
+    var card = el("article", { class: "panel agent", "aria-labelledby": hid });
+    card.appendChild(el("div", { class: "head" },
+      el("div", { class: "side" }, box, el("h2", { id: hid }, el("a", { href: "#agente/" + id, text: c.name })), c.is_demo ? pill("Demonstração (simulação)", "demo") : null, pill(st[0], st[1]), c.status === "paused" ? pill("Cliente pausado", "no") : null),
+      autoSwitch(id, c.name, ag.automation === "ligada", refresh)));
+    card.appendChild(el("p", { class: "muted", text: (c.segment || "Sem segmento") + " · " + (ag.formats || []).map(function (f) { return FMT[f] || f; }).join(", ") + " · " + plural(ag.posts_per_week, "post por semana", "posts por semana")
+      + " · horários " + ((ag.post_times || []).join(", ") || "não definidos") + " (" + tzName(tz) + ")" }));
+    var acc = el("div", { class: "side" }); accountPills(a.accounts, ag.platforms, tz).forEach(function (x) { acc.appendChild(x); }); card.appendChild(acc);
+    if (ag.automation === "ligada" && c.status === "paused") card.appendChild(note("O cliente está pausado: o agendador não cria execuções para ele, mesmo com a automação ligada.", "warn"));
+
+    var needs = el("div", { class: "items" });
+    (a.needs || []).forEach(function (t) { needs.appendChild(needItem(t, a, eng, refresh)); });
+    if (!(a.needs || []).length) needs.appendChild(el("p", { class: "muted", text: "Nenhuma pendência registrada." }));
+
+    var runs = el("div", { class: "items" });
+    (a.active_runs || []).forEach(function (r) { runs.appendChild(runItem(r, id, tz)); });
+    if (!(a.active_runs || []).length) runs.appendChild(el("p", { class: "muted", text: "Nenhum post em produção agora." }));
+    if (a.last_run && !(a.active_runs || []).some(function (r) { return r.id === a.last_run.id; })) {
+      var ls = RUN_STATUS[a.last_run.status] || [a.last_run.status, ""];
+      runs.appendChild(el("span", { class: "label", text: "Última execução" }));
+      runs.appendChild(el("a", { class: "item", href: "#agente/" + id + "/" + a.last_run.id }, el("b", { text: (FMT[a.last_run.format] || a.last_run.format) + " · " + runTitle(a.last_run) }),
+        el("span", { class: "meta" }, pill(ls[0], ls[1]), el("span", { text: "Etapa: " + (STEP[a.last_run.step] || a.last_run.step) }), el("span", { text: "iniciada " + date(a.last_run.started_at, tz) }))));
+    } else if (!a.last_run) runs.appendChild(el("p", { class: "muted", text: "Este agente ainda não rodou nenhuma vez." }));
+
+    var next = el("div", { class: "items" });
+    (a.upcoming_posts || []).forEach(function (p) {
+      next.appendChild(el("div", { class: "item" }, el("b", { text: (NET[p.platform] || p.platform) + (p.story ? " · Story" : "") + " · " + (p.title || "Sem título") }),
+        el("span", { class: "meta" }, pill(p.status === "processing" ? "Publicando agora" : "Agendado", p.status === "processing" ? "wait" : ""), el("span", { text: when(p.scheduled_for, tz) }))));
+    });
+    if (!(a.upcoming_posts || []).length) next.appendChild(el("p", { class: "muted", text: "Nenhum post aprovado na agenda." }));
+    next.appendChild(el("span", { class: "label", text: "Próximos horários do agente" }));
+    next.appendChild(el("p", { class: (a.next_slots || []).length ? "" : "muted", text: (a.next_slots || []).length ? a.next_slots.map(function (s) { return when(s, tz); }).join(" · ")
+      : ag.automation === "ligada" ? "Sem horário calculado: confira os horários na configuração." : "Automação pausada: o agente só roda quando o time manda (Rodar agora)." }));
+
+    var errs = el("div", { class: "items" });
+    (a.errors || []).forEach(function (x) {
+      var body = [el("span", { class: "meta" }, el("b", { text: date(x.at, tz) }), el("span", { text: (x.kind === "publicacao" ? "Publicação" : "Execução") + ", etapa " + (STEP[x.step] || x.step) }), x.title ? el("span", { text: x.title }) : null),
+        el("span", { text: x.message || "Sem mensagem registrada." }), x.code ? el("span", { class: "meta", text: "código " + x.code }) : null,
+        x.kind === "publicacao" ? el("span", { class: "meta", text: "Para tentar de novo: página Clientes, no post que falhou." }) : null];
+      var node = x.run_id ? el("a", { class: "item err", href: "#agente/" + id + "/" + x.run_id }) : el("div", { class: "item err" });
+      body.forEach(function (b) { if (b) node.appendChild(b); }); errs.appendChild(node);
+    });
+    if (!(a.errors || []).length) errs.appendChild(el("p", { class: "muted", text: "Nenhum erro nos últimos 7 dias." }));
+
+    card.appendChild(el("div", { class: "cols" },
+      el("div", { class: "col" }, el("span", { class: "label", text: "Falta para rodar sozinho (" + (a.needs || []).length + ")" }), needs),
+      el("div", { class: "col" }, el("span", { class: "label", text: "Em produção agora (" + (a.active_runs || []).length + ")" }), runs),
+      el("div", { class: "col" }, el("span", { class: "label", text: "Posts na agenda (" + (a.upcoming_posts || []).length + ")" }), next),
+      el("div", { class: "col" }, el("span", { class: "label", text: "Erros dos últimos 7 dias (" + (a.errors || []).length + ")" }), errs)));
+    card.appendChild(el("div", { class: "side" }, el("a", { class: "btn sm", href: "#agente/" + id, text: "Abrir agente" }), el("a", { class: "btn ghost sm", href: "#vivo/" + id, text: "Ver ao vivo" })));
+    return card;
+  }
+  // Atualizacao em lote: so os campos marcados sao enviados.
+  function bulkForm(getTargets, onDone) {
+    var rows = [], target = el("p", { class: "muted", role: "status" }), out = el("div", { class: "items", "aria-live": "polite" }), alertBox = el("div", { role: "alert" });
+    var btn = el("button", { class: "btn", type: "button", text: "Aplicar", disabled: true }), body = el("div");
+    var times = timeChips(["12:33", "18:21"]), ppw = el("input", { type: "number", min: "1", max: "28", step: "1", value: "7", inputMode: "numeric" });
+    var nets = checks(NET_OPTS, ["instagram"]), fmts = checks(FMT_OPTS, ["reel", "carrossel", "imagem"]);
+    var appr = select([["cliente", "O cliente aprova cada post"], ["automatica", "Automática (sem aprovação)"]], "cliente"), auto = select([["ligada", "Ligada"], ["pausada", "Pausada"]], "ligada");
+    var lead = el("input", { type: "number", min: "1", max: "168", step: "1", value: "24", inputMode: "numeric" });
+    var story = select([["sim", "Sim"], ["nao", "Não"]], "nao"), ai = select([["sim", "Sim"], ["nao", "Não"]], "sim"), tone = el("textarea", { maxLength: 600, placeholder: "Tom de voz que passa a valer para os agentes escolhidos." });
+    var textP = select([["claude", "Claude (escreve sozinho)"], ["banco", "Banco de pautas (textos prontos, sem custo de IA)"]], "claude"), mediaP = select([["template", "Arte por template (padrão, sem chave)"], ["manual", "Manual (o time envia a mídia)"]], "template");
+    var apprWarn = el("span", { class: "hint bad", hidden: true, text: "No modo automático nenhum humano vê o post antes de ir ao ar." });
+    appr.addEventListener("change", function () { apprWarn.hidden = appr.value !== "automatica"; });
+    function row(key, label, control, read, extra) {
+      var node = control.node || control, tick = el("input", { type: "checkbox" }), ctl = el("div", { class: "bulkctl off" }, node, extra || null);
+      if (!node._err) { node._err = el("span", { class: "hint bad", hidden: true }); }
+      if (node.matches("input, select, textarea")) node.setAttribute("aria-label", label);
+      ctl.appendChild(node._err);
+      var r = { key: key, label: label, tick: tick, node: node, read: read };
+      setDisabled(node, true);
+      tick.addEventListener("change", function () { setDisabled(node, !tick.checked); ctl.className = "bulkctl" + (tick.checked ? "" : " off"); if (control.repaint) control.repaint(); setErr(node, ""); sync(); });
+      rows.push(r);
+      body.appendChild(el("div", { class: "bulkrow" }, el("label", { class: "check" }, tick, el("span", null, el("b", { text: label }))), ctl));
+    }
+    var intOf = function (input, min, max, msg) { return function () { return isInt(input.value, min, max) ? { v: +input.value } : { err: msg }; }; };
+    var listOf = function (c, msg) { return function () { var v = c.value(); return v.length ? { v: v } : { err: msg }; }; };
+    row("post_times", "Horários de publicação", times, listOf(times, "Informe ao menos um horário."), el("span", { class: "hint", text: "Substitui a lista de horários de cada agente escolhido, no fuso de cada cliente." }));
+    row("posts_per_week", "Posts por semana", ppw, intOf(ppw, 1, 28, "Use um número inteiro de 1 a 28."));
+    row("platforms", "Redes", nets, listOf(nets, "Escolha ao menos uma rede."));
+    row("formats", "Formatos", fmts, listOf(fmts, "Escolha ao menos um formato."));
+    row("approval_mode", "Aprovação", appr, function () { return { v: appr.value }; }, apprWarn);
+    row("automation", "Automação", auto, function () { return { v: auto.value }; });
+    row("lead_hours", "Antecedência (horas)", lead, intOf(lead, 1, 168, "Use um número inteiro de 1 a 168."), el("span", { class: "hint", text: "Com quantas horas de antecedência o agente prepara cada post." }));
+    row("story_default", "Postar também no story", story, function () { return { v: story.value === "sim" }; });
+    row("ai_label", "Marcar como conteúdo gerado por IA", ai, function () { return { v: ai.value === "sim" }; });
+    row("tone", "Tom de voz", tone, function () { return tone.value.trim() ? { v: tone.value.trim() } : { err: "Escreva o tom de voz. Para não alterar, desmarque este campo." }; });
+    row("text_provider", "Quem escreve o texto", textP, function () { return { v: textP.value }; });
+    row("media_provider", "Quem faz a mídia", mediaP, function () { return { v: mediaP.value }; }, el("span", { class: "hint", text: "Higgsfield só aparece quando a chave está configurada e está A VERIFICAR: ainda não foi testado com chave real. Fornecedor simulado só vale em cliente de demonstração: os demais são ignorados, com o motivo." }));
+    function options(sel, list) {
+      var sig = JSON.stringify(list); if (sel._sig === sig) return; sel._sig = sig;
+      var keep = sel.value; sel.textContent = "";
+      list.forEach(function (o) { sel.appendChild(el("option", { value: o[0], text: o[1] })); });
+      if (list.some(function (o) { return o[0] === keep; })) sel.value = keep;
+    }
+    function sync() {
+      var t = getTargets(), n = t.all ? t.total : t.ids.length, any = rows.some(function (r) { return r.tick.checked; });
+      setText(target, !n ? "Nenhum agente selecionado. Marque os agentes nos cartões acima ou use Selecionar todos."
+        : (t.all ? "Vale para todos os " + num(n) + " agentes, inclusive os que forem criados até o envio." : "Vale para " + plural(n, "agente", "agentes") + ": " + t.names.join(", ") + ".") + " Só os campos marcados abaixo são enviados.");
+      setText(btn, btn.dataset.sure ? "Confirmar: aplicar a " + (t.all ? "todos" : plural(n, "agente", "agentes")) : !n ? "Aplicar" : "Aplicar a " + (t.all ? "todos os agentes" : plural(n, "agente", "agentes")));
+      btn.disabled = !n || !any; hold(btn, btn.dataset.busy === "1");
+      options(textP, [["claude", "Claude (escreve sozinho)"], ["banco", "Banco de pautas (textos prontos, sem custo de IA)"]].concat(t.demo ? [["simulado", "Simulado (só demonstração)"]] : []));
+      options(mediaP, [["template", "Arte por template (padrão, sem chave)"], ["manual", "Manual (o time envia a mídia)"]].concat(genOk("media", "higgsfield") ? [["higgsfield", "Higgsfield (A VERIFICAR)"]] : [], t.demo ? [["simulado", "Simulado (só demonstração)"]] : []));
+    }
+    btn.addEventListener("click", function () {
+      if (held(btn)) return;
+      var t = getTargets(), patch = {}, bad = 0;
+      rows.forEach(function (r) { if (!r.tick.checked) return; var x = r.read(); setErr(r.node, x.err || ""); if (x.err) bad++; else patch[r.key] = x.v; });
+      alertBox.textContent = "";
+      if (bad) { alertBox.appendChild(note("Corrija " + plural(bad, "campo marcado", "campos marcados") + " antes de aplicar.", "bad")); return; }
+      if (!btn.dataset.sure) { btn.dataset.sure = "1"; sync(); setTimeout(function () { delete btn.dataset.sure; sync(); }, 5000); return; }
+      delete btn.dataset.sure; btn.dataset.busy = "1"; sync(); out.textContent = "";
+      api("POST", "/admin/agents/bulk", { client_ids: t.all ? "all" : t.ids, patch: patch }).then(function (r) {
+        delete btn.dataset.busy; sync();
+        var up = r.updated || [], sk = r.skipped || [];
+        out.appendChild(el("div", { class: "item" }, el("b", { text: "Atualizados (" + up.length + ")" }), el("span", { text: up.length ? up.join(", ") : "Nenhum agente foi alterado." }),
+          el("span", { class: "meta", text: "Campos enviados: " + Object.keys(patch).join(", ") + " · " + clock(new Date()) })));
+        if (sk.length) {
+          var box = el("div", { class: "item err" }, el("b", { text: "Ignorados (" + sk.length + ")" }));
+          sk.forEach(function (x) { box.appendChild(el("span", { text: x.name + ": " + x.reason })); }); out.appendChild(box);
+        }
+        toast(plural(up.length, "agente atualizado", "agentes atualizados") + (sk.length ? ", " + plural(sk.length, "ignorado", "ignorados") : "") + "."); onDone();
+      }).catch(function (e) { delete btn.dataset.busy; sync(); if (e.status === 401) return fail(e); alertBox.appendChild(note("A atualização em lote não foi aplicada: " + e.message, "bad")); });
+    });
+    var node = el("section", { class: "panel", id: "bulk", "aria-labelledby": "bulkTitle" }, el("h2", { id: "bulkTitle", text: "Atualizar em lote" }), target, body, alertBox, el("div", null, btn), out);
+    return { node: node, sync: sync };
+  }
+  function viewCentral() {
+    var s = scope(), cards = {}, picked = {}, allMode = false, D = null, shownAt = null;
+    var summary = el("p", { class: "muted" }), status = el("p", { class: "hint" }), problem = el("div", { role: "status" }), engineBox = el("section", { class: "panel", "aria-label": "Motor dos agentes" });
+    var selAll = el("input", { type: "checkbox", id: "selAll" }), list = el("div", { class: "cards" });
+    var sel = { has: function (id) { return allMode || !!picked[id]; }, set: function (id, on) {
+      if (allMode && !on) { allMode = false; picked = {}; D.agents.forEach(function (a) { picked[a.client.id] = true; }); }
+      if (on) picked[id] = true; else delete picked[id];
+      syncSel();
+    } };
+    function targets() {
+      var ags = D ? D.agents : [], chosen = ags.filter(function (a) { return sel.has(a.client.id); });
+      return { all: allMode, total: ags.length, ids: chosen.map(function (a) { return a.client.id; }), names: chosen.map(function (a) { return a.client.name; }), demo: chosen.some(function (a) { return a.client.is_demo; }) };
+    }
+    var bulk = bulkForm(targets, function () { refresh(); });
+    function syncSel() {
+      var t = targets(); selAll.checked = allMode || (t.total > 0 && t.ids.length === t.total); selAll.indeterminate = !selAll.checked && t.ids.length > 0;
+      bulk.sync();
+    }
+    selAll.addEventListener("change", function () {
+      allMode = selAll.checked; picked = {};
+      Object.keys(cards).forEach(function (id) { var b = cards[id].node.querySelector("input[type=checkbox]"); if (b) b.checked = allMode; });
+      syncSel();
+    });
+    function paint(d) {
+      D = d; shownAt = new Date();
+      var ags = d.agents || [], on = ags.filter(function (a) { return a.agent.automation === "ligada"; }).length, act = ags.reduce(function (n, a) { return n + (a.active_runs || []).length; }, 0),
+        need = ags.filter(function (a) { return (a.needs || []).length; }).length;
+      summary.textContent = plural(ags.length, "agente", "agentes") + " · " + num(on) + " com automação ligada · " + plural(act, "post em produção", "posts em produção") + " · " + num(need) + " com pendência";
+      engineBox.textContent = ""; engineBox.appendChild(engineStrip(d));
+      var seen = {}, e = d.engine || {};
+      ags.forEach(function (a, i) {
+        var id = a.client.id, sig = JSON.stringify([a, e.instagram_configured, e.tiktok_configured, e.steps]), c = cards[id];
+        seen[id] = true;
+        if (!c || c.sig !== sig) {
+          var node = agentCard(a, d, sel, refresh);
+          if (c) swap(c.node, node); else list.appendChild(node);
+          cards[id] = { sig: sig, node: node };
+        }
+        if (list.children[i] !== cards[id].node) list.insertBefore(cards[id].node, list.children[i] || null);
+      });
+      Object.keys(cards).forEach(function (id) { if (!seen[id]) { cards[id].node.remove(); delete cards[id]; delete picked[id]; } });
+      var empty = list.querySelector(".empty");
+      if (!ags.length && !empty) list.appendChild(el("div", { class: "panel empty" }, el("p", { text: "Nenhum agente ainda." }), el("p", null, el("a", { class: "btn", href: "#novo", text: "Criar o primeiro agente" }))));
+      else if (ags.length && empty) empty.remove();
+      status.textContent = "Atualizado às " + clock(shownAt) + ". A central se atualiza sozinha a cada 20 segundos.";
+      problem.textContent = ""; syncSel();
+    }
+    function refresh() {
+      loadCentral().then(function (d) { if (s.alive) paint(d); }).catch(function (e) {
+        if (!s.alive) return; if (e.status === 401) return fail(e);
+        problem.textContent = ""; problem.appendChild(note("Falha ao atualizar às " + clock(new Date()) + ": " + e.message + (shownAt ? " Mostrando os dados das " + clock(shownAt) + "." : ""), "bad"));
+      });
+    }
+    app.appendChild(el("div", { class: "head" }, el("div", { class: "f" }, el("h1", { text: "Central de agentes" }), summary), el("a", { class: "btn", href: "#novo", text: "Novo agente" })));
+    app.appendChild(engineBox);
+    app.appendChild(el("div", { class: "head" }, el("label", { class: "check" }, selAll, el("span", { text: "Selecionar todos para atualizar em lote" })), el("button", { class: "btn ghost sm", type: "button", text: "Ir para a atualização em lote", onclick: function () {
+      bulk.node.scrollIntoView({ behavior: "smooth", block: "start" }); var h = bulk.node.querySelector("h2"); h.tabIndex = -1; h.focus({ preventScroll: true });
+    } })));
+    app.appendChild(problem); app.appendChild(list); app.appendChild(bulk.node); app.appendChild(status);
+    if (CENTRAL) paint(CENTRAL);
+    if (!fresh()) refresh();
+    s.every(20000, refresh);
+    return s;
+  }
+
+  // ---------- 2. Novo agente ----------
+  var WZ_STEPS = ["A conta", "Tipo de postagem", "Redes e horários", "Como roda", "Revisão"];
+  var WZ_CODE_STEP = { bad_name: 0, context_required: 0, bad_link: 1, bad_lead: 2, not_demo: 3, bad_approval_mode: 3, bad_text_provider: 3, bad_media_provider: 3 };
+  function wzNew() {
+    return { step: 0, max: 0, err: null, result: null, data: { name: "", segment: "", context: "", audience: "", formats: ["reel", "carrossel", "imagem"], pillars: [], tone: "", default_link: "",
+      platforms: ["instagram"], timezone: "America/Sao_Paulo", posts_per_week: "7", post_times: ["12:33", "18:21"], lead_hours: "24",
+      is_demo: false, text_provider: "", media_provider: "template", approval_mode: "cliente", ai_label: true, story_default: false } };
+  }
+  function wzValidate(i) {
+    var d = WZ.data, e = [];
+    if (i === 0) {
+      if (d.name.trim().length < 2) e.push(["name", "Informe o nome do cliente."]);
+      if (d.context.trim().length < 20) e.push(["context", "Descreva a conta com pelo menos uma frase (20 caracteres ou mais). Até aqui: " + d.context.trim().length + "."]);
+    } else if (i === 1) {
+      if (!d.formats.length) e.push(["formats", "Escolha ao menos um formato."]);
+      if (d.pillars.length < 3 || d.pillars.length > 5) e.push(["pillars", "Informe de 3 a 5 temas. Até aqui: " + d.pillars.length + "."]);
+      if (d.default_link.trim() && !LINK.test(d.default_link.trim())) e.push(["default_link", "Use um endereço completo, começando com https://."]);
+    } else if (i === 2) {
+      if (!d.platforms.length) e.push(["platforms", "Escolha ao menos uma rede."]);
+      if (!isInt(d.posts_per_week, 1, 28)) e.push(["posts_per_week", "Use um número inteiro de 1 a 28."]);
+      if (!d.post_times.length) e.push(["post_times", "Informe ao menos um horário."]);
+      if (!isInt(d.lead_hours, 1, 168)) e.push(["lead_hours", "Use um número inteiro de 1 a 168 horas."]);
+    } else if (i === 3) {
+      if (!d.is_demo && d.media_provider === "higgsfield" && !genOk("media", "higgsfield")) e.push(["media_provider", "O Higgsfield não está configurado. Escolha Manual."]);
+    }
+    return e;
+  }
+  function wzBody() {
+    var d = WZ.data, t = function (v) { return String(v).trim(); };
+    var agent = { context: t(d.context), formats: d.formats.slice(), pillars: d.pillars.slice(), platforms: d.platforms.slice(), posts_per_week: +d.posts_per_week, post_times: d.post_times.slice(), lead_hours: +d.lead_hours,
+      text_provider: d.is_demo ? "simulado" : (d.text_provider || "banco"), media_provider: d.is_demo ? "template" : d.media_provider, approval_mode: d.approval_mode, ai_label: !!d.ai_label, story_default: !!d.story_default, automation: "ligada" };
+    if (t(d.audience)) agent.audience = t(d.audience);
+    if (t(d.tone)) agent.tone = t(d.tone);
+    if (t(d.default_link)) agent.default_link = t(d.default_link);
+    var body = { name: t(d.name), timezone: d.timezone, is_demo: !!d.is_demo, agent: agent };
+    if (t(d.segment)) body.segment = t(d.segment);
+    return body;
+  }
+  function viewNovo() {
+    var s = scope(), box = el("div", { class: "rows", style: "gap:18px" }); app.appendChild(box);
+    if (!WZ) WZ = wzNew();
+    var d = WZ.data, I = {};
+    function bind(key, input) { I[key] = input; input.addEventListener("input", function () { d[key] = input.value; }); return input; }
+    function show(errs, form) {
+      Object.keys(I).forEach(function (k) { setErr(I[k], ""); });
+      errs.forEach(function (x) { if (I[x[0]]) setErr(I[x[0]], x[1]); });
+      var a = form.querySelector(".wzalert"); a.textContent = "";
+      if (!errs.length) return;
+      a.appendChild(note("Corrija " + plural(errs.length, "campo", "campos") + " para continuar: " + errs.map(function (x) { return x[1]; }).join(" "), "bad"));
+      var first = I[errs[0][0]]; first = first && (first.matches("input, textarea, select") ? first : first.querySelector("input, select, textarea")); if (first) first.focus();
+    }
+    function go(i, focus) { WZ.step = i; WZ.max = Math.max(WZ.max, i); draw(focus !== false); }
+    function shell(title, lead, fields, last) {
+      var form = el("form", { class: "panel", noValidate: true, "aria-labelledby": "wzTitle" }, el("h2", { id: "wzTitle", tabIndex: -1, text: "Passo " + (WZ.step + 1) + " de " + WZ_STEPS.length + ": " + title }), lead ? el("p", { class: "muted", text: lead }) : null);
+      fields.forEach(function (f) { if (f) form.appendChild(f); });
+      form.appendChild(el("div", { class: "wzalert", role: "alert" }));
+      form.appendChild(el("div", { class: "side" }, WZ.step > 0 ? el("button", { class: "btn ghost", type: "button", text: "Voltar", onclick: function () { go(WZ.step - 1); } }) : null,
+        el("button", { class: "btn", type: "submit", text: last || "Continuar" })));
+      form.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        if (WZ.step === 4) return create(form);
+        var errs = wzValidate(WZ.step); if (errs.length) return show(errs, form);
+        go(WZ.step + 1);
+      });
+      return form;
+    }
+    function stepper() {
+      var ol = el("ol", { class: "steps", "aria-label": "Passos do assistente" });
+      WZ_STEPS.forEach(function (t, i) {
+        ol.appendChild(el("li", null, el("button", { type: "button", text: (i + 1) + ". " + t, disabled: i > WZ.max, "aria-current": i === WZ.step ? "step" : null, onclick: function () {
+          if (i === WZ.step) return;
+          if (i > WZ.step) { for (var k = WZ.step; k < i; k++) { var errs = wzValidate(k); if (errs.length) { if (k !== WZ.step) go(k); show(wzValidate(k), box.querySelector("form")); return; } } }
+          go(i);
+        } })));
+      });
+      return ol;
+    }
+    function step0() {
+      return shell("a conta", "Quem é o cliente e o que o agente precisa saber para escrever por ele.", [el("div", { class: "grid" },
+        field("Nome do cliente", bind("name", el("input", { type: "text", value: d.name, maxLength: 80, placeholder: "Ex.: Café Aurora", autocomplete: "off" }))),
+        field("Segmento", bind("segment", el("input", { type: "text", value: d.segment, maxLength: 80, placeholder: "Ex.: Cafeteria de bairro" }))),
+        field("Contexto da conta", bind("context", el("textarea", { value: d.context, maxLength: 4000, rows: 6, placeholder: "O que a marca faz, o que vende, para quem, onde, faixa de preço e o que a diferencia." })), { wide: true,
+          hint: "Obrigatório. É a base de tudo que o agente escreve: tema, roteiro e legenda saem daqui. Quanto mais específico, menos genérico fica o post. O agente não inventa número nem resultado: só usa o que estiver escrito." }),
+        field("Público", bind("audience", el("textarea", { value: d.audience, maxLength: 600, placeholder: "Quem a marca quer alcançar: idade, cidade, o que procura, o que trava a compra." })), { wide: true, hint: "Opcional, mas ajuda o agente a escolher o ângulo de cada post." }))]);
+    }
+    function step1() {
+      var fmts = checks(FMT_OPTS, d.formats, function () { d.formats = fmts.value(); });
+      var pil = chipInput({ values: d.pillars, placeholder: "Ex.: Bastidores da torra", label: "Novo tema", max: 5, onchange: function (v) { d.pillars = v; } });
+      I.formats = fmts.node; I.pillars = pil.node;
+      return shell("tipo de postagem", "O que o agente produz e sobre o que ele fala.", [el("div", { class: "grid" },
+        group("Formatos", fmts.node, { wide: true, hint: "O agente alterna entre os formatos marcados, um por post." }),
+        group("Temas (pilares)", pil.node, { wide: true, hint: "De 3 a 5 assuntos fixos. O agente faz um rodízio entre eles para não repetir tema." }),
+        field("Tom de voz", bind("tone", el("textarea", { value: d.tone, maxLength: 600, placeholder: "Ex.: Próximo e direto, como quem atende no balcão. Sem gíria forçada, sem promessa." })), { wide: true, hint: "Opcional. Dá para detalhar depois (palavras que usa, que evita, chamada para ação)." }),
+        field("Link que acompanha os posts", bind("default_link", el("input", { type: "url", value: d.default_link, maxLength: 500, placeholder: "https://...", inputMode: "url" })), { wide: true, hint: "Opcional. Vai no fim da legenda, como texto. Story não leva link pela API." }))]);
+    }
+    function step2() {
+      var nets = checks(NET_OPTS, d.platforms, function () { d.platforms = nets.value(); });
+      var cap = el("span", { class: "hint" });
+      var times = timeChips(d.post_times, function (v) { d.post_times = v; capacity(); });
+      var tz = select(TZ_OPTS, d.timezone); tz.addEventListener("change", function () { d.timezone = tz.value; });
+      function capacity() {
+        var n = d.post_times.length * 7, want = isInt(d.posts_per_week, 1, 28) ? +d.posts_per_week : 0;
+        cap.textContent = !d.post_times.length ? "" : "Com " + plural(d.post_times.length, "horário", "horários") + " cabem até " + n + " posts por semana. "
+          + (want > n ? "Você pediu " + want + ": o agente vai fazer " + n + ". Para chegar a " + want + ", inclua mais horários." : "O agente espalha os posts pela semana.");
+      }
+      I.platforms = nets.node; I.post_times = times.node; capacity();
+      return shell("redes, frequência e horários", "Onde e quando o agente publica.", [el("div", { class: "grid" },
+        group("Redes", nets.node, { hint: "O cliente conecta cada conta pelo link que você recebe no fim." }),
+        field("Posts por semana", bind("posts_per_week", el("input", { type: "number", min: "1", max: "28", step: "1", value: d.posts_per_week, inputMode: "numeric", oninput: function () { setTimeout(capacity, 0); } })), { hint: "De 1 a 28." }),
+        group("Horários de publicação", times.node, { wide: true, hint: "12:33 e 18:21 são um ponto de partida: uma hipótese até a conta ter dados próprios. Troque quando souber em que horário o público responde melhor." }),
+        el("div", { class: "f wide", role: "status" }, cap),
+        field("Fuso do cliente", tz, { hint: "Os horários acima valem neste fuso." }),
+        field("Antecedência (horas)", bind("lead_hours", el("input", { type: "number", min: "1", max: "168", step: "1", value: d.lead_hours, inputMode: "numeric" })), { hint: "Com quantas horas de antecedência o agente prepara cada post. Mais horas dão mais tempo para a mídia e para a aprovação. De 1 a 168." }))]);
+    }
+    function step3() {
+      var claude = genOk("text", "claude"), hf = genOk("media", "higgsfield");
+      var demo = el("input", { type: "checkbox", checked: d.is_demo, onchange: function () { d.is_demo = demo.checked; draw(false); var x = box.querySelector("#wzDemo"); if (x) x.focus(); }, id: "wzDemo" });
+      var parts = [el("label", { class: "check" }, demo, el("span", null, el("b", { text: "Cliente de demonstração (simulação, não publica em rede nenhuma)" }), el("br"), el("span", { class: "hint", text: "Para mostrar o fluxo inteiro sem chave e sem conta real. Texto e mídia são de exemplo e tudo aparece marcado como simulação." })))];
+      function radios(name, key, opts) {
+        var wrap = el("div", { class: "radio" });
+        opts.forEach(function (o) {
+          var r = el("input", { type: "radio", name: name, value: o[0], checked: d[key] === o[0], disabled: !!o[3], onchange: function () { d[key] = o[0]; if (o[4]) o[4](); } });
+          wrap.appendChild(el("label", { class: "check" }, r, el("span", null, el("b", { text: o[1] }), el("br"), el("span", { class: "hint", text: o[2] }))));
+        });
+        return wrap;
+      }
+      if (d.is_demo) {
+        parts.push(el("fieldset", { class: "grp" }, el("legend", { text: "Texto e mídia" }), note("Demonstração: o texto é de exemplo (marcado como simulação) e a arte é montada pelo template de verdade. Nenhuma chamada ao Claude nem a gerador externo, e as contas são simuladas: nada é publicado em rede nenhuma.", "warn")));
+      } else {
+        if (d.media_provider === "higgsfield" && !hf) d.media_provider = "template";
+        if (!d.text_provider) d.text_provider = claude ? "claude" : "banco";
+        var text = radios("wzText", "text_provider", [
+          ["claude", "Claude escreve sozinho", claude ? "Plano, roteiro e legenda de cada post, sem repetir tema que o perfil já tem. Cobrado pela Anthropic por uso." : "Indisponível: falta a chave do Claude (Configuração, Chaves e integrações).", !claude],
+          ["banco", "Banco de pautas", "O time carrega textos prontos na página do agente e o agente usa um por post, sem repetir tema. Sem custo de IA."]]);
+        I.text_provider = text;
+        parts.push(el("fieldset", { class: "grp" }, el("legend", { text: "Quem escreve o texto" }), text));
+        var media = radios("wzMedia", "media_provider", [
+          ["template", "Arte por template (padrão)", "A plataforma monta a imagem, o carrossel e o story a partir do texto e das cores da marca. Sem chave externa. Reel precisa de vídeo enviado pelo time."],
+          ["manual", "Manual", "O agente escreve o briefing e o time envia a imagem ou o vídeo pelo painel."],
+          ["higgsfield", "Higgsfield (A VERIFICAR, ainda não testado com chave real)", hf ? "O gerador externo cria a imagem ou o vídeo sozinho. Confira os primeiros resultados de perto." : "Indisponível: falta configurar a chave da API do Higgsfield.", !hf]]);
+        I.media_provider = media; media._err = el("span", { class: "hint bad", hidden: true });
+        parts.push(el("fieldset", { class: "grp" }, el("legend", { text: "Quem faz a mídia" }), media, media._err));
+      }
+      var warn = el("div", { class: "notice bad", hidden: d.approval_mode !== "automatica", text: "Atenção: no modo automático nenhum humano vê o post antes de ir ao ar. Um erro de texto ou de mídia é publicado no perfil do cliente." });
+      var togg = function () { warn.hidden = d.approval_mode !== "automatica"; };
+      parts.push(el("fieldset", { class: "grp" }, el("legend", { text: "Aprovação" }), radios("wzAppr", "approval_mode", [
+        ["cliente", "O cliente aprova cada post (recomendado)", "O post pronto entra na fila do portal e só é publicado depois do sim do cliente.", false, togg],
+        ["automatica", "Automática", "O agente aprova sozinho e o post vai direto para a agenda.", false, togg]]), warn));
+      var ai = el("input", { type: "checkbox", checked: d.ai_label, onchange: function () { d.ai_label = ai.checked; } }), st = el("input", { type: "checkbox", checked: d.story_default, onchange: function () { d.story_default = st.checked; } });
+      parts.push(el("fieldset", { class: "grp" }, el("legend", { text: "Opções dos posts" }),
+        el("label", { class: "check" }, ai, el("span", { text: "Marcar o conteúdo como gerado por IA, quando a rede aceita" })),
+        el("label", { class: "check" }, st, el("span", { text: "Postar também no story do Instagram por padrão (o cliente pode mudar em cada post)" }))));
+      return shell("como roda", "Quem produz, quem aprova e como o post sai.", parts);
+    }
+    function review() {
+      var b = wzBody(), a = b.agent, hfNote = a.media_provider === "higgsfield" ? " (A VERIFICAR, ainda não testado com chave real)" : "";
+      var prov = { claude: "Claude", banco: "Banco de pautas", simulado: "Simulado (demonstração)", template: "Arte por template", manual: "Manual: o time envia", higgsfield: "Higgsfield" + hfNote };
+      function part(i, title, lines) {
+        var n = el("div", { class: "item" }, el("div", { class: "head" }, el("b", { text: title }), el("button", { class: "btn ghost sm", type: "button", text: "Editar", "aria-label": "Editar: " + title, onclick: function () { go(i); } })));
+        lines.forEach(function (l) { if (l[1] !== "" && l[1] != null) n.appendChild(el("div", { class: "kvl" }, el("span", { class: "label", text: l[0] }), el("span", { class: "pre", text: l[1] }))); });
+        return n;
+      }
+      var parts = [el("div", { class: "review" },
+        part(0, "A conta", [["Cliente", b.name + (b.is_demo ? " (demonstração)" : "")], ["Segmento", b.segment], ["Contexto", a.context], ["Público", a.audience]]),
+        part(1, "Tipo de postagem", [["Formatos", a.formats.map(function (f) { return FMT[f]; }).join(", ")], ["Temas", a.pillars.join(", ")], ["Tom de voz", a.tone], ["Link dos posts", a.default_link]]),
+        part(2, "Redes e horários", [["Redes", a.platforms.map(function (p) { return NET[p]; }).join(", ")], ["Frequência", plural(a.posts_per_week, "post por semana", "posts por semana")],
+          ["Horários", a.post_times.join(", ") + " (" + tzName(b.timezone) + ")"], ["Antecedência", plural(a.lead_hours, "hora", "horas")]]),
+        part(3, "Como roda", [["Texto", prov[a.text_provider]], ["Mídia", prov[a.media_provider]], ["Aprovação", a.approval_mode === "automatica" ? "Automática, sem aprovação do cliente" : "O cliente aprova cada post"],
+          ["Marcar como IA", a.ai_label ? "Sim" : "Não"], ["Story por padrão", a.story_default ? "Sim" : "Não"]]))];
+      if (b.is_demo) parts.push(note("Cliente de demonstração: tudo roda em simulação e nada é publicado em rede nenhuma.", "warn"));
+      else if (a.text_provider === "banco") parts.push(note("Banco de pautas: depois de criar, carregue as pautas na página do agente. Sem pauta disponível, a execução para na etapa Planejar com o motivo.", "warn"));
+      if (a.approval_mode === "automatica") parts.push(note("Aprovação automática: os posts saem sem ninguém ver antes.", "bad"));
+      parts.push(el("p", { text: "Ao criar, o Sr. Post cadastra o cliente, o agente e o link do portal, e deixa a automação ligada: o agente passa a preparar os posts dos próximos horários sozinho." }));
+      if (WZ.err) parts.push(el("div", { class: "notice bad", role: "alert" }, el("p", { text: "O agente não foi criado: " + WZ.err.message }),
+        WZ.err.step != null ? el("p", { style: "margin-top:8px" }, el("button", { class: "btn sm", type: "button", text: "Corrigir no passo " + (WZ.err.step + 1), onclick: function () { go(WZ.err.step); } })) : null));
+      return shell("revisão", "Confira antes de criar. Nada foi gravado até aqui.", parts, "Criar agente");
+    }
+    function create(form) {
+      for (var k = 0; k < 4; k++) { var errs = wzValidate(k); if (errs.length) { go(k); return show(wzValidate(k), box.querySelector("form")); } }
+      var btn = form.querySelector("button[type=submit]"), body = wzBody(); btn.disabled = true; btn.textContent = "Criando...";
+      api("POST", "/admin/agents", body).then(function (r) {
+        WZ.err = null; WZ.result = { client: r.client, portal_url: r.portal_url, connect_url: r.connect_url, platforms: body.agent.platforms, is_demo: body.is_demo, timezone: body.timezone, media: body.agent.media_provider, text: body.agent.text_provider };
+        loadCentral().catch(function () {});
+        if (s.alive) { draw(true); window.scrollTo(0, 0); }
+      }).catch(function (e) {
+        if (e.status === 401) return fail(e);
+        WZ.err = { message: e.message, step: WZ_CODE_STEP[e.code] }; if (s.alive) draw(false);
+        var a = box.querySelector(".notice.bad[role=alert]"); if (a) a.scrollIntoView({ block: "center" });
+      });
+    }
+    function result() {
+      var r = WZ.result, id = r.client.id, tz = r.timezone, last = "";
+      var conn = el("div", { class: "items", "aria-live": "polite" }, el("p", { class: "muted", text: "Consultando a conexão..." })), auto = el("div", { class: "items", "aria-live": "polite" }), pollMsg = el("p", { class: "hint" });
+      function sim(net) {
+        return el("button", { class: "btn ghost sm", type: "button", text: "Ativar " + NET[net] + " simulado", onclick: function (ev) {
+          var b = ev.currentTarget; if (held(b)) return; hold(b, true);
+          api("POST", "/admin/clients/" + id + "/sim-account", { platform: net, mode: "ok" }).then(function () { toast(NET[net] + " simulado ativado."); poll(); }).catch(function (e) { hold(b, false); fail(e); });
+        } });
+      }
+      function paint(dd) {
+        var sig = JSON.stringify([dd.accounts, dd.agent.automation, dd.next_slots, dd.agent.platforms, dd.agent.lead_hours]);
+        pollMsg.textContent = "Conexão conferida às " + clock(new Date()) + ". Esta tela confere de novo a cada 5 segundos.";
+        if (sig === last) return; last = sig;
+        var nets = dd.agent.platforms || r.platforms, wasFocus = document.activeElement && conn.contains(document.activeElement);
+        conn.textContent = "";
+        nets.forEach(function (p) {
+          var a = (dd.accounts || []).filter(function (x) { return x.platform === p; })[0], ok = a && a.status === "connected";
+          conn.appendChild(el("div", { class: "item" }, el("span", { class: "side" }, el("b", { text: NET[p] || p }),
+            pill(ok ? (a.simulated ? "conta simulada ativa" : "conectado: @" + (a.username || "conta")) : a ? "conexão " + (a.status === "revoked" ? "revogada" : "expirada") : "aguardando o cliente conectar", ok ? (a.simulated ? "demo" : "ok") : a ? "no" : "wait")),
+            !ok && r.is_demo ? el("span", null, sim(p)) : null,
+            !ok && !r.is_demo ? el("span", { class: "muted", text: "Aparece aqui assim que o cliente concluir a conexão pelo link." }) : null));
+        });
+        if (wasFocus) { var f = conn.querySelector("button"); if (f) f.focus(); }
+        auto.textContent = "";
+        var on = dd.agent.automation === "ligada", slots = dd.next_slots || [];
+        auto.appendChild(el("div", { class: "item" }, el("span", { class: "side" }, el("b", { text: "Automação" }), pill(on ? "ligada" : "pausada", on ? "ok" : "fix")),
+          el("span", { text: on ? "O agente prepara cada post com " + plural(dd.agent.lead_hours, "hora", "horas") + " de antecedência, sem ninguém precisar mandar."
+            : "A automação está pausada: o agente só roda quando o time manda. Ligue na página do agente." }),
+          slots.length ? el("span", null, el("span", { class: "label", text: "Próximos horários (" + tzName(tz) + ")" }), el("br"), slots.map(function (x) { return when(x, tz); }).join(" · ")) : null));
+      }
+      function poll() {
+        api("GET", "/admin/agents/" + id).then(function (dd) { if (s.alive) paint(dd); }).catch(function (e) {
+          if (!s.alive) return; if (e.status === 401) return fail(e);
+          pollMsg.textContent = "Não foi possível conferir a conexão às " + clock(new Date()) + ": " + e.message;
+        });
+      }
+      var link = function (label, why, url) { return el("div", { class: "kvl" }, el("span", { class: "label", text: label }), el("span", { class: "hint", text: why }), el("code", { text: url }), el("span", null, copyBtn(url, "Copiar " + label.toLowerCase()))); };
+      box.appendChild(el("div", { class: "head" }, el("div", { class: "f" }, el("h1", { tabIndex: -1, text: "Agente criado: " + r.client.name }), el("p", { class: "muted", text: r.is_demo ? "Cliente de demonstração: não depende de conta real. Ative as contas simuladas abaixo para ver o fluxo inteiro, sem publicar em rede nenhuma."
+        : r.media === "manual" ? "Faltam dois passos que dependem de gente: o cliente conectar as contas e o time enviar a mídia de cada post." : "Falta um passo que depende de gente: o cliente conectar as contas." })),
+        r.is_demo ? pill("Demonstração (simulação)", "demo") : null));
+      box.appendChild(el("section", { class: "panel", "aria-labelledby": "rsLinks" }, el("h2", { id: "rsLinks", text: r.is_demo ? "1. Link do portal de demonstração" : "1. Envie o link ao cliente" }),
+        note("Os dois endereços abaixo levam a chave de acesso do cliente e aparecem só agora. Copie antes de sair desta tela. Se perder, gere outro link na página Clientes.", "warn"),
+        link("Link de conexão", "Abre o portal direto na tela de conectar " + r.platforms.map(function (p) { return NET[p]; }).join(" e ") + ". É este que você envia agora.", r.connect_url),
+        link("Link do portal", "O mesmo acesso, abrindo na fila de aprovação. É o que o cliente usa no dia a dia para aprovar os posts.", r.portal_url),
+        el("p", { class: "muted", text: "O que mandar: o link de conexão com um pedido simples, por exemplo: \"Abra este link e conecte a conta da marca. Leva um minuto.\" Quem tiver o link entra sem senha: envie só para quem decide pelo cliente." })));
+      box.appendChild(el("section", { class: "panel", "aria-labelledby": "rsConn" }, el("h2", { id: "rsConn", text: "2. Conexão das contas" }),
+        r.is_demo ? el("p", { class: "muted", text: "Cliente de demonstração: não há conta real. Ative a conta simulada para o fluxo andar até o fim, sem publicar em rede nenhuma." }) : null, conn, pollMsg));
+      box.appendChild(el("section", { class: "panel", "aria-labelledby": "rsAuto" }, el("h2", { id: "rsAuto", text: "3. Automação" }), auto,
+        !r.is_demo && r.text === "banco" ? note("Banco de pautas: carregue as pautas na página do agente. Sem pauta, as execuções param na etapa Planejar com o motivo.", "warn") : null,
+        r.media === "manual" ? el("p", { class: "muted", text: "Mídia manual: quando o roteiro de um post ficar pronto, o agente aparece na central pedindo a mídia, com o briefing." }) : null));
+      box.appendChild(el("div", { class: "side" }, el("a", { class: "btn", href: "#agente/" + id, text: "Abrir o agente" }),
+        el("button", { class: "btn ghost", type: "button", text: "Criar outro agente", onclick: function (ev) {
+          var b = ev.currentTarget;
+          if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Já copiei os links: criar outro"; setTimeout(function () { delete b.dataset.sure; b.textContent = "Criar outro agente"; }, 5000); return; }
+          s.timers.forEach(clearInterval); s.timers = []; WZ = wzNew(); d = WZ.data; draw(true);
+        } })));
+      poll(); s.every(5000, poll);
+    }
+    function draw(focus) {
+      box.textContent = ""; I = {};
+      if (WZ.result) { result(); if (focus) { var h1 = box.querySelector("h1"); if (h1) h1.focus({ preventScroll: true }); } return; }
+      box.appendChild(el("div", { class: "f" }, el("h1", { text: "Novo agente" }), el("p", { class: "muted", text: "Quatro blocos de perguntas e uma revisão. No fim você recebe o link para o cliente conectar as contas, e o agente já fica rodando." })));
+      box.appendChild(stepper());
+      box.appendChild([step0, step1, step2, step3, review][WZ.step]());
+      if (focus) { var h = box.querySelector("#wzTitle"); if (h) h.focus({ preventScroll: true }); }
+    }
+    draw(false);
+    // Os fornecedores disponiveis podem ter mudado desde o login.
+    var before = JSON.stringify(CENTRAL && CENTRAL.engine && CENTRAL.engine.generators);
+    loadCentral().then(function () { if (s.alive && !WZ.result && WZ.step >= 3 && JSON.stringify(CENTRAL.engine && CENTRAL.engine.generators) !== before) draw(false); }).catch(function (e) { if (s.alive && e.status === 401) fail(e); });
+    return s;
+  }
+
+  // ---------- 3. Agente ----------
+  function normCfg(a) {
+    var t = function (v) { return v == null ? "" : String(v).trim(); }, v = a.voice || {}, voice = {};
+    VOICE.forEach(function (k) { voice[k] = t(v[k]); });
+    return { name: t(a.name), role_line: t(a.role_line), bio: t(a.bio), context: t(a.context), audience: t(a.audience), default_link: t(a.default_link), tone: t(a.tone), voice: voice,
+      pillars: (a.pillars || []).slice(), formats: (a.formats || []).slice(), platforms: (a.platforms || []).slice(), posts_per_week: String(a.posts_per_week == null ? "" : a.posts_per_week),
+      post_times: (a.post_times || []).slice().sort(), lead_hours: String(a.lead_hours == null ? "" : a.lead_hours), automation: a.automation, status: a.status,
+      text_provider: a.text_provider, media_provider: a.media_provider, approval_mode: a.approval_mode, ai_label: !!a.ai_label, story_default: !!a.story_default };
+  }
+  // Formulario de configuracao: compara com o que veio da API e envia so o que mudou.
+  function configForm(D, onSaved) {
+    var a = D.agent, demo = !!D.client.is_demo, tz = D.client.timezone, g = (D.engine && D.engine.generators) || {}, o = normCfg(a), I = {};
+    var msg = el("p", { class: "hint", role: "status" }), alertBox = el("div", { role: "alert" });
+    var save = el("button", { class: "btn", type: "submit", text: "Salvar alterações", disabled: true }), undo = el("button", { class: "btn ghost", type: "button", text: "Desfazer", disabled: true });
+    function txt(key, label, opt) {
+      opt = opt || {}; var path = opt.voice ? "voice." + key : key;
+      I[path] = el(opt.area ? "textarea" : "input", { type: opt.area ? null : (opt.type || "text"), value: opt.voice ? o.voice[key] : o[key], maxLength: opt.max || 600, placeholder: opt.ph || null, rows: opt.rows || null });
+      return field(label, I[path], { wide: opt.wide, hint: opt.hint });
+    }
+    function numf(key, label, min, max, hint) { I[key] = el("input", { type: "number", min: String(min), max: String(max), step: "1", value: o[key], inputMode: "numeric" }); return field(label, I[key], { hint: hint }); }
+    function sel(key, label, options, hint) {
+      if (!options.some(function (x) { return x[0] === o[key]; })) options.push([o[key], String(o[key]) + " (valor atual)"]);
+      I[key] = select(options, o[key]); return field(label, I[key], { hint: hint });
+    }
+    function chk(key, label) { I[key] = el("input", { type: "checkbox", checked: o[key] }); return el("label", { class: "check" }, I[key], el("span", { text: label })); }
+    var pil = chipInput({ values: o.pillars, placeholder: "Novo tema", label: "Novo tema", max: 8, onchange: upd }), times = timeChips(o.post_times, upd);
+    var fmts = checks(FMT_OPTS, o.formats, upd), nets = checks(NET_OPTS, o.platforms, upd);
+    I.pillars = pil.node; I.post_times = times.node; I.formats = fmts.node; I.platforms = nets.node;
+    // Arte por template: tema pronto ou cores da marca, e a assinatura que aparece na arte.
+    var br = o.brand || {};
+    I["brand.tema"] = select([["noite", "Noite (fundo escuro)"], ["claro", "Claro"], ["areia", "Areia"], ["grafite", "Grafite"], ["marca", "Cores da marca (abaixo)"]], br.tema || "noite");
+    ["fundo", "texto", "destaque"].forEach(function (k) { I["brand." + k] = el("input", { type: "text", value: br[k] || "", maxLength: 7, placeholder: "#RRGGBB" }); });
+    I["brand.assinatura"] = el("input", { type: "text", value: br.assinatura || "", maxLength: 40, placeholder: "@perfil ou site" });
+    var apprWarn = el("div", { class: "notice bad f wide", hidden: o.approval_mode !== "automatica", text: "No modo automático nenhum humano vê o post antes de ir ao ar. Um erro de texto ou de mídia é publicado no perfil do cliente." });
+    var grp = function (title) { var f = el("fieldset", { class: "grp" }, el("legend", { text: title })), gr = el("div", { class: "grid" }); for (var i = 1; i < arguments.length; i++) if (arguments[i]) gr.appendChild(arguments[i]); f.appendChild(gr); return f; };
+    var form = el("form", { class: "rows", noValidate: true, style: "gap:16px" },
+      grp("Conta",
+        txt("context", "Contexto da conta", { area: true, wide: true, max: 4000, rows: 6, hint: "O que a marca faz, o que vende e para quem. É a base de tudo que o agente escreve." }),
+        txt("audience", "Público", { area: true, wide: true }),
+        txt("default_link", "Link que acompanha os posts", { type: "url", max: 500, ph: "https://..." }),
+        txt("name", "Nome do agente", { hint: "Aparece para o cliente na aba Agente do portal." }),
+        txt("role_line", "Descrição curta do agente"),
+        txt("bio", "O que o agente faz por este cliente", { area: true, wide: true, hint: "Texto de apresentação no portal do cliente." })),
+      grp("Voz",
+        txt("tone", "Tom de voz", { area: true, wide: true }),
+        txt("usa", "Palavras e expressões que a marca usa", { voice: true }), txt("evita", "Palavras e expressões que a marca evita", { voice: true }),
+        txt("cta", "Chamada para ação padrão", { voice: true }), txt("provas", "Provas e números que pode citar", { voice: true, hint: "O agente não inventa número nem resultado: só cita o que estiver aqui." }),
+        txt("proibido", "Temas proibidos", { voice: true }), txt("emoji", "Uso de emoji", { voice: true, ph: "Ex.: no máximo um por legenda" })),
+      grp("Conteúdo",
+        group("Temas (pilares)", pil.node, { wide: true, hint: "O agente faz um rodízio entre os temas, na ordem em que aparecem. Até 8." }),
+        group("Formatos", fmts.node, { wide: true })),
+      grp("Agenda",
+        group("Redes", nets.node), numf("posts_per_week", "Posts por semana", 1, 28, "De 1 a 28."),
+        group("Horários de publicação", times.node, { wide: true, hint: "No " + tzName(tz) + ". Até 6 horários." }),
+        numf("lead_hours", "Antecedência (horas)", 1, 168, "Com quantas horas de antecedência o agente prepara cada post."),
+        sel("automation", "Automação", [["ligada", "Ligada: o agente gera sozinho"], ["pausada", "Pausada: só roda quando o time manda"]]),
+        sel("status", "Situação mostrada ao cliente", [["ativo", "Ativo"], ["configurando", "Em configuração"], ["pausado", "Pausado"]], "É o que o cliente vê no portal. Quem liga ou desliga a geração é a Automação.")),
+      grp("Geração e aprovação",
+        sel("text_provider", "Quem escreve o texto", [["claude", "Claude (escreve sozinho)"], ["banco", "Banco de pautas (textos prontos, sem custo de IA)"]].concat(demo ? [["simulado", "Simulado (só demonstração)"]] : []),
+          g.text && g.text.claude ? null : "A chave do Claude não está configurada: com Claude, o agente para na etapa Planejar. Use o banco de pautas ou cole a chave em Configuração."),
+        sel("media_provider", "Quem faz a mídia", [["template", "Arte por template (padrão, sem chave)"], ["manual", "Manual (o time envia a mídia)"], ["higgsfield", "Higgsfield (A VERIFICAR)", !(g.media && g.media.higgsfield) && o.media_provider !== "higgsfield"]].concat(demo ? [["simulado", "Simulado (só demonstração)"]] : []),
+          g.media && g.media.higgsfield ? "Higgsfield está A VERIFICAR: ainda não foi testado com chave real. Confira os primeiros resultados de perto." : "Higgsfield indisponível: falta configurar a chave da API. Quando houver chave, a integração ainda estará A VERIFICAR."),
+        sel("approval_mode", "Aprovação", [["cliente", "O cliente aprova cada post"], ["automatica", "Automática (sem aprovação)"]]), apprWarn,
+        el("div", { class: "f wide" }, chk("ai_label", "Marcar o conteúdo como gerado por IA, quando a rede aceita"), chk("story_default", "Postar também no story do Instagram por padrão"))),
+      grp("Arte por template",
+        field("Tema", I["brand.tema"], { hint: "Com \"Cores da marca\", use as três cores abaixo. Texto sem contraste com o fundo é trocado por preto ou branco." }),
+        field("Assinatura na arte", I["brand.assinatura"], { hint: "Vazio: usa o @ do Instagram conectado." }),
+        field("Cor de fundo", I["brand.fundo"]), field("Cor do texto", I["brand.texto"]), field("Cor de destaque", I["brand.destaque"])),
+      alertBox,
+      el("div", { class: "head" }, el("div", { class: "side" }, save, undo), el("span", { class: "hint", text: "Versão " + num(a.config_version) + " da configuração · alterada em " + date(a.updated_at, tz) + (a.last_run_at ? " · última execução criada em " + date(a.last_run_at, tz) : "") })),
+      el("p", { class: "hint", text: "Identificadores (só leitura): agente " + a.id + " · cliente " + a.client_id }),
+      msg);
+    function cur() {
+      var c = { voice: {} };
+      ["name", "role_line", "bio", "context", "audience", "default_link", "tone", "posts_per_week", "lead_hours"].forEach(function (k) { c[k] = I[k].value.trim(); });
+      ["automation", "status", "text_provider", "media_provider", "approval_mode"].forEach(function (k) { c[k] = I[k].value; });
+      VOICE.forEach(function (k) { c.voice[k] = I["voice." + k].value.trim(); });
+      c.ai_label = I.ai_label.checked; c.story_default = I.story_default.checked;
+      c.pillars = pil.value(); c.post_times = times.value().sort(); c.formats = fmts.value(); c.platforms = nets.value();
+      c.brand = {}; ["tema", "fundo", "texto", "destaque", "assinatura"].forEach(function (k) { var v = I["brand." + k].value.trim(); if (v) c.brand[k] = v; });
+      return c;
+    }
+    function diff() {
+      var c = cur(), p = {};
+      ["name", "role_line", "bio", "context", "audience", "default_link", "tone", "automation", "status", "text_provider", "media_provider", "approval_mode", "ai_label", "story_default", "posts_per_week", "lead_hours"].forEach(function (k) { if (c[k] !== o[k]) p[k] = c[k]; });
+      if (JSON.stringify(c.pillars) !== JSON.stringify(o.pillars)) p.pillars = c.pillars;
+      if (JSON.stringify(c.post_times) !== JSON.stringify(o.post_times)) p.post_times = c.post_times;
+      if (!sameSet(c.formats, o.formats)) p.formats = c.formats;
+      if (!sameSet(c.platforms, o.platforms)) p.platforms = c.platforms;
+      if (VOICE.some(function (k) { return c.voice[k] !== o.voice[k]; })) { p.voice = {}; VOICE.forEach(function (k) { if (c.voice[k]) p.voice[k] = c.voice[k]; }); }
+      var ob = o.brand || {};
+      if (["tema", "fundo", "texto", "destaque", "assinatura"].some(function (k) { return (c.brand[k] || "") !== (ob[k] || (k === "tema" ? "noite" : "")); })) p.brand = c.brand;
+      return p;
+    }
+    function validate(p) {
+      var e = [];
+      if ("context" in p && p.context.length < 20) e.push(["context", "Descreva a conta com pelo menos uma frase (20 caracteres ou mais)."]);
+      if (p.default_link && !LINK.test(p.default_link)) e.push(["default_link", "Use um endereço completo, começando com https://."]);
+      if ("posts_per_week" in p && !isInt(p.posts_per_week, 1, 28)) e.push(["posts_per_week", "Use um número inteiro de 1 a 28."]);
+      if ("lead_hours" in p && !isInt(p.lead_hours, 1, 168)) e.push(["lead_hours", "Use um número inteiro de 1 a 168."]);
+      if ("post_times" in p && !p.post_times.length) e.push(["post_times", "Informe ao menos um horário."]);
+      if ("formats" in p && !p.formats.length) e.push(["formats", "Escolha ao menos um formato."]);
+      if ("platforms" in p && !p.platforms.length) e.push(["platforms", "Escolha ao menos uma rede."]);
+      return e;
+    }
+    function upd() {
+      var n = Object.keys(diff()).length; save.disabled = !n; undo.disabled = !n; apprWarn.hidden = I.approval_mode.value !== "automatica";
+      msg.textContent = n ? plural(n, "campo alterado", "campos alterados") + ", ainda não salvo." : "";
+    }
+    form.addEventListener("input", upd); form.addEventListener("change", upd);
+    undo.addEventListener("click", function () { onSaved(null); });
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var p = diff(), errs = validate(p); alertBox.textContent = "";
+      Object.keys(I).forEach(function (k) { setErr(I[k], ""); });
+      if (!Object.keys(p).length) { msg.textContent = "Nada foi alterado."; return; }
+      if (errs.length) {
+        errs.forEach(function (x) { setErr(I[x[0]], x[1]); });
+        alertBox.appendChild(note("Corrija " + plural(errs.length, "campo", "campos") + " para salvar: " + errs.map(function (x) { return x[1]; }).join(" "), "bad"));
+        var first = I[errs[0][0]]; first = first.matches("input, textarea, select") ? first : first.querySelector("input"); if (first) first.focus();
+        return;
+      }
+      if ("posts_per_week" in p) p.posts_per_week = +p.posts_per_week;
+      if ("lead_hours" in p) p.lead_hours = +p.lead_hours;
+      if (held(save)) return; hold(save, true); save.textContent = "Salvando...";
+      api("PATCH", "/admin/agents/" + D.client.id, p).then(function (r) { onSaved(r, Object.keys(p)); }).catch(function (e) {
+        hold(save, false); save.textContent = "Salvar alterações"; if (e.status === 401) return fail(e);
+        alertBox.appendChild(note("A configuração não foi salva: " + e.message, "bad"));
+      });
+    });
+    return { node: form, dirty: function () { return Object.keys(diff()).length > 0; }, version: a.config_version, focus: function (key) { if (I[key]) I[key].focus(); } };
+  }
+  // ---------- upload (mesma logica do painel: imagem vira JPEG, video ganha capa) ----------
+  function prepare(file, isVideo) {
+    if (!isVideo) return toJpeg(file).then(function (blob) { return { blob: blob, name: file.name, type: "image/jpeg" }; });
+    var type = file.type === "video/quicktime" ? "video/quicktime" : "video/mp4";
+    return videoThumb(file).then(function (thumb) { return { blob: file, name: file.name, type: type, thumb: thumb }; });
+  }
+  function toJpeg(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var s = Math.min(1, 1440 / img.naturalWidth), cv = document.createElement("canvas");
+        cv.width = Math.round(img.naturalWidth * s); cv.height = Math.round(img.naturalHeight * s);
+        var ctx = cv.getContext("2d"); ctx.fillStyle = "#FFF"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (b) { b ? resolve(b) : reject(new Error("Não foi possível converter a imagem.")); }, "image/jpeg", 0.9);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Imagem inválida: " + file.name)); };
+      img.src = url;
+    });
+  }
+  function videoThumb(file) {
+    return new Promise(function (resolve) {
+      var v = document.createElement("video"), url = URL.createObjectURL(file), finished = false;
+      var end = function (b) { if (finished) return; finished = true; URL.revokeObjectURL(url); resolve(b || null); };
+      v.muted = true; v.preload = "auto"; v.playsInline = true;
+      v.onloadeddata = function () { try { v.currentTime = Math.min(0.5, (v.duration || 1) / 2); } catch (e) { end(); } };
+      v.onseeked = function () {
+        try {
+          var s = Math.min(1, 540 / v.videoWidth), cv = document.createElement("canvas");
+          cv.width = Math.round(v.videoWidth * s); cv.height = Math.round(v.videoHeight * s);
+          cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height); cv.toBlob(function (b) { end(b); }, "image/jpeg", 0.8);
+        } catch (e) { end(); }
+      };
+      v.onerror = function () { end(); }; setTimeout(function () { end(); }, 8000);
+      v.src = url;
+    });
+  }
+  function upload(clientId, blob, filename, type) {
+    return api("POST", "/admin/upload-url", { client_id: clientId, filename: filename, content_type: type }).then(function (u) {
+      return fetch(u.signed_url, { method: "PUT", headers: { "content-type": type, "x-upsert": "false" }, body: blob }).then(function (r) {
+        if (!r.ok) throw new Error("Falha no upload de " + filename + " (" + r.status + ").");
+        return u.path;
+      }, function () { throw new Error("Sem conexão durante o upload de " + filename + "."); });
+    });
+  }
+  var IMG_TYPES = "image/jpeg,image/png,image/webp", VID_TYPES = "video/mp4,video/quicktime";
+  var MEDIA_RULE = {
+    reel: { accept: VID_TYPES, multiple: false, text: "Este post é um Reel: envie 1 vídeo vertical (9:16) em MP4 ou MOV, H.264, até 50 MB." },
+    carrossel: { accept: IMG_TYPES, multiple: true, text: "Este post é um carrossel: envie de 2 a 10 imagens (JPG, PNG ou WEBP), na ordem dos slides. Todas seguem a proporção da primeira (4:5)." },
+    imagem: { accept: IMG_TYPES, multiple: false, text: "Este post é uma imagem: envie 1 imagem (JPG, PNG ou WEBP) em 4:5." },
+    story: { accept: IMG_TYPES + "," + VID_TYPES, multiple: false, text: "Este post é um story: envie 1 imagem ou 1 vídeo vertical (9:16), até 50 MB." }
+  };
+  // Confere os arquivos escolhidos contra o formato do post. Devolve a mensagem de erro ou "".
+  function mediaProblem(format, files) {
+    var img = function (f) { return IMG_TYPES.indexOf(f.type) >= 0 && f.type !== ""; }, vid = function (f) { return VID_TYPES.indexOf(f.type) >= 0 && f.type !== ""; };
+    if (!files.length) return "Escolha o arquivo.";
+    if (files.some(function (f) { return f.size > MAX_BYTES; })) return "Há arquivo acima de 50 MB. Comprima antes de enviar.";
+    if (format === "reel") return files.length === 1 && vid(files[0]) ? "" : "O Reel leva exatamente 1 vídeo em MP4 ou MOV.";
+    if (format === "carrossel") return files.length >= 2 && files.length <= 10 && files.every(img) ? "" : "O carrossel leva de 2 a 10 imagens (JPG, PNG ou WEBP). Você escolheu " + files.length + ".";
+    if (format === "imagem") return files.length === 1 && img(files[0]) ? "" : "Este post leva exatamente 1 imagem (JPG, PNG ou WEBP).";
+    return files.length === 1 && (img(files[0]) || vid(files[0])) ? "" : "O story leva 1 imagem ou 1 vídeo.";
+  }
+  function viewAgente(clientId, third) {
+    var s = scope(), D = null, RN = {}, built = false, shown = false, form = null, liveH = null, liveSig = "", headSig = "", tab = third === "config" ? "config" : third === "bank" ? "bank" : "runs", pendingOpen = UUID.test(third || "") ? third : null;
+    var head = el("div", { class: "rows" }), liveBox = el("div"), runsList = el("div", { class: "rows" }), runsMsg = el("p", { class: "hint" }), cfgBox = el("div"), cfgMsg = el("p", { class: "hint", role: "status" });
+    var fmtSel = el("select", { id: "runFormat" }), runBtn = el("button", { class: "btn", type: "button", text: "Rodar agora" });
+    var tabRuns = el("button", { class: "btn ghost sm", type: "button", text: "Execuções" }), tabCfg = el("button", { class: "btn ghost sm", type: "button", text: "Configuração" });
+    var tabBank = el("button", { class: "btn ghost sm", type: "button", text: "Banco de pautas" });
+    var pBank = el("section", { class: "panel", id: "pBank", "aria-labelledby": "pBankT" }), bankBox = el("div", { class: "rows" }), bankMsg = el("p", { class: "hint", role: "status" });
+    var pRuns = el("section", { class: "panel", id: "pRuns", "aria-labelledby": "pRunsT" }), pCfg = el("section", { class: "panel", id: "pCfg", "aria-labelledby": "pCfgT" });
+    s.agentId = clientId;
+    s.go = function (t) { if (t === "config") setTab("config", true); else if (UUID.test(t || "")) { setTab("runs"); openRunHere(t); } else setTab("runs"); };
+    function setTab(t, focus) {
+      tab = t; pRuns.hidden = t !== "runs"; pCfg.hidden = t !== "config"; pBank.hidden = t !== "bank";
+      [[tabRuns, "runs"], [tabCfg, "config"], [tabBank, "bank"]].forEach(function (x) { x[0].setAttribute("aria-pressed", t === x[1] ? "true" : "false"); x[0].className = "btn sm" + (t === x[1] ? "" : " ghost"); });
+      if (t === "bank") loadBank();
+      if (focus && built) toConfig();
+    }
+    // Quem chega pela pendencia "Preencher o contexto" cai direto no campo.
+    function toConfig() { pCfg.scrollIntoView({ block: "start" }); if (form && D && !(D.agent.context || "").trim()) form.focus("context"); }
+    function setHash(t) { try { history.replaceState(null, "", "#agente/" + clientId + (t ? "/" + t : "")); } catch (e) {} }
+    tabRuns.addEventListener("click", function () { setTab("runs"); setHash(""); });
+    tabCfg.addEventListener("click", function () { setTab("config"); setHash("config"); });
+    tabBank.addEventListener("click", function () { setTab("bank"); setHash("bank"); });
+
+    // ---------- banco de pautas: textos prontos que o agente usa um por post, sem repetir tema ----------
+    var FMT_SHORT = { reel: "Reel", carrossel: "Carrossel", imagem: "Imagem", story: "Story" };
+    var STATUS_BANK = { disponivel: ["Disponível", "ok"], usado: ["Usada", ""], repetido: ["Descartada: tema repetido", "fix"] };
+    function loadBank() {
+      bankMsg.textContent = "Carregando...";
+      api("GET", "/admin/agents/" + clientId + "/bank").then(function (d) { if (s.alive) paintBank(d); }).catch(function (e) { bankMsg.textContent = e.message; });
+    }
+    function paintBank(d) {
+      bankBox.textContent = ""; bankMsg.textContent = "";
+      var c = d.counts || {};
+      bankBox.appendChild(el("p", { class: "muted", text: num(c.disponivel) + " disponível(is), " + num(c.usado) + " usada(s), " + num(c.repetido) + " descartada(s) por repetir tema que o perfil já tem." }));
+      if (!d.items.length) bankBox.appendChild(el("p", { class: "muted", text: "Nenhuma pauta ainda. Adicione abaixo." }));
+      d.items.forEach(function (it) {
+        var st = STATUS_BANK[it.status] || [it.status, ""];
+        var side = el("span", { class: "side" }, pill(st[0], st[1]));
+        if (it.status !== "usado") side.appendChild(el("button", { class: "btn danger sm", type: "button", text: "Remover", onclick: function () {
+          api("DELETE", "/admin/bank/" + it.id).then(function () { toast("Pauta removida."); loadBank(); }).catch(fail);
+        } }));
+        bankBox.appendChild(el("div", { class: "row" }, el("span", { class: "main" }, el("b", { text: it.tema }),
+          el("span", { class: "hint", text: (FMT_SHORT[it.formato] || it.formato) + (it.pilar ? " · " + it.pilar : "") + " · " + (it.slides || []).length + " bloco(s) de arte" + (it.used_at ? " · usada em " + date(it.used_at) : "") }),
+          it.note ? el("span", { class: "hint", text: it.note }) : null), side));
+      });
+    }
+    function bankForm() {
+      var f = { formato: select(FMT_OPTS, "imagem"), tema: el("input", { type: "text", maxLength: 160 }), pilar: el("input", { type: "text", maxLength: 60 }), titulo: el("input", { type: "text", maxLength: 120 }),
+        arte: el("textarea", { rows: 6, placeholder: "Um bloco por imagem, separados por uma linha em branco.\nPrimeira linha do bloco: título da arte. Linhas seguintes: texto de apoio (duas ou mais linhas viram lista)." }),
+        legenda: el("textarea", { rows: 5, maxLength: 2200 }), hashtags: el("input", { type: "text", maxLength: 600, placeholder: "#tag1 #tag2" }),
+        json: el("textarea", { rows: 4, placeholder: "Opcional: cole aqui uma lista JSON de pautas para importar várias de uma vez." }) };
+      var out = el("p", { class: "hint", role: "status" });
+      function blocks(text) {
+        return text.split(/\n\s*\n/).map(function (b) { var l = b.split("\n").map(function (x) { return x.trim(); }).filter(Boolean); return l.length ? { titulo: l[0], texto: l.slice(1).join("\n") } : null; }).filter(Boolean);
+      }
+      function send(items) {
+        out.textContent = "Enviando...";
+        api("POST", "/admin/agents/" + clientId + "/bank", { items: items }).then(function (r) {
+          out.textContent = num(r.created.length) + " pauta(s) adicionada(s)." + (r.skipped.length ? " Ficaram de fora por repetir tema: " + r.skipped.map(function (x) { return x.tema; }).join("; ") + "." : "");
+          if (r.created.length) { f.tema.value = ""; f.titulo.value = ""; f.arte.value = ""; f.legenda.value = ""; f.json.value = ""; }
+          loadBank();
+        }).catch(function (e) { out.textContent = e.message; });
+      }
+      var add = el("button", { class: "btn", type: "button", text: "Adicionar pauta", onclick: function () {
+        if (f.json.value.trim()) {
+          var list; try { list = JSON.parse(f.json.value); } catch (e) { out.textContent = "O JSON não é válido."; return; }
+          return send(Array.isArray(list) ? list : [list]);
+        }
+        send([{ formato: f.formato.value, tema: f.tema.value.trim(), pilar: f.pilar.value.trim(), titulo: f.titulo.value.trim(), slides: blocks(f.arte.value), legenda: f.legenda.value.trim(), hashtags: f.hashtags.value.trim() }]);
+      } });
+      return el("fieldset", { class: "grp" }, el("legend", { text: "Nova pauta" }),
+        el("div", { class: "grid" }, field("Formato", f.formato), field("Tema", f.tema, { hint: "O agente pula pauta com tema parecido com o que o perfil já tem." }), field("Pilar", f.pilar), field("Título interno", f.titulo),
+          field("Texto da arte", f.arte, { wide: true, hint: "Imagem e story: um bloco. Carrossel: de 2 a 10 blocos, um por slide." }), field("Legenda", f.legenda, { wide: true }), field("Hashtags", f.hashtags, { wide: true }),
+          field("Importar várias (JSON)", f.json, { wide: true })),
+        el("div", { class: "side" }, add), out);
+    }
+
+    function load() {
+      return api("GET", "/admin/agents/" + clientId).then(function (d) { if (s.alive) { D = d; paint(); } }).catch(function (e) {
+        if (!s.alive) return; if (e.status === 401) return fail(e);
+        if (!built) { app.textContent = ""; app.appendChild(errorBox("Não foi possível abrir o agente: " + e.message, function () { app.textContent = ""; app.appendChild(el("p", { class: "muted", text: "Carregando o agente..." })); load(); })); app.appendChild(el("p", null, el("a", { class: "btn ghost sm", href: "#central", text: "Voltar à central" }))); }
+        else runsMsg.textContent = "Falha ao atualizar às " + clock(new Date()) + ": " + e.message;
+      });
+    }
+    function build() {
+      built = true; app.textContent = "";
+      app.appendChild(head);
+      app.appendChild(el("section", { class: "panel", "aria-labelledby": "liveT" }, el("div", { class: "head" }, el("h2", { id: "liveT", text: "Ao vivo" }),
+        el("span", { class: "hint", text: "As etapas acendem a partir dos eventos gravados no banco. Sem evento, nada acende." })), liveBox));
+      app.appendChild(el("div", { class: "side", role: "group", "aria-label": "Partes do agente" }, tabRuns, tabCfg, tabBank));
+      pRuns.appendChild(el("div", { class: "head" }, el("h2", { id: "pRunsT", text: "Execuções" }),
+        el("div", { class: "side" }, el("label", { class: "label", htmlFor: "runFormat", text: "Formato" }), el("span", { style: "min-width:190px" }, fmtSel), runBtn)));
+      pRuns.appendChild(el("p", { class: "muted", text: "Cada execução é um post em produção. Rodar agora cria uma execução fora da agenda, no formato escolhido ou no próximo do rodízio." }));
+      pRuns.appendChild(runsList); pRuns.appendChild(runsMsg);
+      pCfg.appendChild(el("h2", { id: "pCfgT", text: "Configuração" })); pCfg.appendChild(cfgBox); pCfg.appendChild(cfgMsg);
+      pBank.appendChild(el("h2", { id: "pBankT", text: "Banco de pautas" }));
+      pBank.appendChild(el("p", { class: "muted", text: "Textos prontos (tema, texto da arte, legenda e hashtags). Com \"Quem escreve o texto: Banco de pautas\", o agente usa uma pauta por post, na ordem, e descarta as que repetem tema que o perfil já tem. A arte é montada pelo template a partir do texto da arte." }));
+      pBank.appendChild(bankBox); pBank.appendChild(bankMsg); pBank.appendChild(bankForm());
+      app.appendChild(pRuns); app.appendChild(pCfg); app.appendChild(pBank);
+      setTab(tab);
+    }
+    runBtn.addEventListener("click", function () {
+      if (held(runBtn)) return; hold(runBtn, true);
+      api("POST", "/admin/agents/" + clientId + "/run", fmtSel.value ? { formato: fmtSel.value } : {}).then(function (r) {
+        hold(runBtn, false); toast("Execução criada. O agente começa no próximo ciclo (até 1 minuto)."); pendingOpen = r.run_id; return load();
+      }).catch(function (e) { hold(runBtn, false); fail(e); });
+    });
+    function paintHead() {
+      var c = D.client, a = D.agent, tz = c.timezone || "America/Sao_Paulo", sig = JSON.stringify([c, a.automation, a.status, a.platforms, D.accounts, D.next_slots]);
+      if (sig === headSig) return; headSig = sig;
+      var st = AGENT_STATUS[a.status] || [a.status, ""], acc = el("div", { class: "side" }), nh = el("div", { class: "rows" });
+      accountPills(D.accounts, a.platforms, tz).forEach(function (x) { acc.appendChild(x); });
+      nh.appendChild(el("p", null, el("a", { href: "#central", text: "Voltar à central" })));
+      nh.appendChild(el("div", { class: "head" }, el("div", { class: "side" }, el("h1", { text: c.name }), c.is_demo ? pill("Demonstração (simulação)", "demo") : null, pill(st[0], st[1]), c.status === "paused" ? pill("Cliente pausado", "no") : null),
+        autoSwitch(clientId, c.name, a.automation === "ligada", function () { load(); })));
+      nh.appendChild(acc);
+      nh.appendChild(el("p", { class: "muted", text: (c.segment || "Sem segmento") + " · datas e horas desta página no " + tzName(tz) + " · "
+        + (a.automation !== "ligada" ? "automação pausada: o agente só roda quando o time manda" : (D.next_slots || []).length ? "próximos horários: " + D.next_slots.slice(0, 4).map(function (x) { return when(x, tz); }).join(" · ") : "sem horário calculado") }));
+      if (c.is_demo) nh.appendChild(note("Cliente de demonstração: texto e mídia podem ser de exemplo (simulação), e a conta simulada percorre o fluxo inteiro sem publicar em rede nenhuma.", "warn"));
+      document.title = c.name + " | Agente | Sr. Post";
+      swap(head, nh); head = nh;
+    }
+    function paint() {
+      if (!built) build();
+      paintHead();
+      var a = D.agent, ls = JSON.stringify([D.client.name, D.client.is_demo, a.automation]);
+      if (ls !== liveSig) {
+        var ag = [{ client_id: clientId, name: D.client.name, is_demo: !!D.client.is_demo, automation: a.automation }];
+        if (liveH && liveH.setAgents) liveH.setAgents(ag); else if (!liveSig) liveH = mountLive(liveBox, s, ag, clientId);
+        liveSig = ls;
+      }
+      var keep = fmtSel.value, opts = [["", "Próximo do rodízio"]].concat((a.formats || []).map(function (f) { return [f, FMT[f] || f]; }));
+      if (fmtSel.options.length !== opts.length || opts.some(function (x, i) { return fmtSel.options[i].value !== x[0]; })) {
+        fmtSel.textContent = ""; opts.forEach(function (x) { fmtSel.appendChild(el("option", { value: x[0], text: x[1] })); });
+        if (opts.some(function (x) { return x[0] === keep; })) fmtSel.value = keep;
+      }
+      tabRuns.textContent = "Execuções (" + (D.runs || []).length + ")"; tabCfg.textContent = "Configuração (versão " + num(a.config_version) + ")";
+      paintRuns();
+      if (!form) mountForm();
+      else if (form.version !== a.config_version) {
+        if (form.dirty()) cfgMsg.textContent = "A configuração mudou no servidor (versão " + num(a.config_version) + ") enquanto você editava. Salvar envia só os campos que você alterou.";
+        else { mountForm(); cfgMsg.textContent = "Configuração recarregada: versão " + num(a.config_version) + "."; }
+      }
+      runsMsg.textContent = "Atualizado às " + clock(new Date()) + ". Esta lista se atualiza a cada 15 segundos.";
+      if (!shown) { shown = true; if (tab === "config") toConfig(); }
+    }
+    function mountForm() {
+      form = configForm(D, function (r, keys) {
+        if (!r) { mountForm(); cfgMsg.textContent = "Alterações desfeitas."; return; }
+        cfgMsg.textContent = "Salvo: " + keys.join(", ") + ". Versão " + num(r.config_version) + " da configuração.";
+        toast("Configuração salva. Versão " + r.config_version + "."); form = null; cfgMsg.tabIndex = -1; cfgMsg.focus({ preventScroll: true }); load();
+      });
+      cfgBox.textContent = ""; cfgBox.appendChild(form.node);
+    }
+    // ----- execucoes -----
+    function paintRuns() {
+      var seen = {}, runs = D.runs || [];
+      runs.forEach(function (r, i) {
+        var st = RN[r.id] || (RN[r.id] = { open: false, events: null, lock: false, sent: false, again: false });
+        seen[r.id] = true; st.run = r;
+        if (r.status !== "aguardando_midia") { st.sent = false; st.again = false; }
+        var sig = JSON.stringify(r);
+        if (!st.node) { st.node = runNode(st); st.sig = sig; runsList.appendChild(st.node); }
+        else if (st.sig !== sig && !st.lock) { st.sig = sig; redraw(st); }
+        if (runsList.children[i] !== st.node) runsList.insertBefore(st.node, runsList.children[i] || null);
+        if (st.open && !st.lock && (st.events == null || ACTIVE.indexOf(r.status) >= 0)) loadEvents(r.id);
+      });
+      Object.keys(RN).forEach(function (id) { if (!seen[id]) { if (RN[id].node) RN[id].node.remove(); delete RN[id]; } });
+      var empty = runsList.querySelector(".empty");
+      if (!runs.length && !empty) runsList.appendChild(el("p", { class: "muted empty", text: "Nenhuma execução ainda. Com a automação ligada, a primeira aparece quando um horário entrar na janela de antecedência. Para testar agora, use Rodar agora." }));
+      else if (runs.length && empty) empty.remove();
+      if (pendingOpen) { var id = pendingOpen; pendingOpen = null; openRunHere(id); }
+    }
+    function redraw(st) { var n = runNode(st); swap(st.node, n); st.node = n; }
+    // O envio manual grava um evento na etapa de midia. Se ele veio depois do ultimo pedido de midia, a midia ja esta registrada.
+    function mediaSent(events) {
+      for (var i = (events || []).length - 1; i >= 0; i--) {
+        var e = events[i]; if (e.step !== "midia") continue;
+        if (e.status === "info" && e.detail && typeof e.detail.itens === "number") return e;
+        if (e.status === "iniciou") return null;
+      }
+      return null;
+    }
+    function openRunHere(id) {
+      var st = RN[id];
+      if (!st) { runsMsg.textContent = "A execução pedida não está entre as 30 mais recentes deste agente."; return; }
+      if (!st.open) { st.open = true; redraw(st); loadEvents(id); }
+      st.node.scrollIntoView({ block: "start", behavior: "smooth" }); var b = st.node.querySelector("button"); if (b) b.focus({ preventScroll: true });
+    }
+    function loadEvents(id) {
+      api("GET", "/admin/runs/" + id).then(function (d) {
+        var st = RN[id]; if (!s.alive || !st || !st.open) return;
+        var sig = (d.events || []).length + ":" + ((d.events || []).length ? d.events[d.events.length - 1].id : 0), same = st.evSig === sig && st.err == null;
+        st.events = d.events || []; st.evSig = sig; st.err = null;
+        if (d.run && (!st.run.updated_at || d.run.updated_at >= st.run.updated_at)) st.detail = d.run;
+        if (!same && !st.lock) redraw(st);
+      }).catch(function (e) {
+        var st = RN[id]; if (!s.alive || !st) return; if (e.status === 401) return fail(e);
+        st.err = e.message; if (!st.lock) redraw(st);
+      });
+    }
+    function runNode(st) {
+      var r = st.run, tz = D.client.timezone || "America/Sao_Paulo", ss = RUN_STATUS[r.status] || [r.status, ""], pid = "runp-" + r.id;
+      var btn = el("button", { type: "button", "aria-expanded": st.open ? "true" : "false", "aria-controls": pid, onclick: function () {
+        if (st.lock) return toast("Há um envio de mídia em andamento nesta execução.", true);
+        st.open = !st.open; redraw(st); if (st.open) loadEvents(r.id);
+        var b = st.node.querySelector("button"); if (b) b.focus({ preventScroll: true });
+      } },
+        el("span", { class: "main" }, el("b", { text: (FMT[r.format] || r.format) + " · " + runTitle(r) }),
+          el("span", { class: "muted", text: (r.slot_at ? "Post de " + when(r.slot_at, tz) : "Fora da agenda, rodada pelo time") + " · iniciada " + date(r.started_at, tz) + (r.revision ? " · versão " + (r.revision + 1) : "") })),
+        el("span", { class: "side" }, r.simulated ? pill("Simulação", "demo") : null, pill(ss[0], ss[1]), pill("Etapa: " + (STEP[r.step] || r.step)), el("span", { class: "hint", text: st.open ? "Fechar" : "Abrir" })));
+      var node = el("div", { class: "run" + (st.open ? " open" : ""), id: "run-" + r.id }, btn);
+      if (st.open) node.appendChild(runBody(st, pid, tz));
+      return node;
+    }
+    function sec(title) { var n = el("div", { class: "sec part" }, el("h3", { text: title })); for (var i = 1; i < arguments.length; i++) if (arguments[i]) n.appendChild(arguments[i]); return n; }
+    function kv(label, value) { return value == null || value === "" ? null : el("div", { class: "kvl" }, el("span", { class: "label", text: label }), el("span", { class: "pre", text: String(value) })); }
+    function runBody(st, pid, tz) {
+      var r = st.detail && st.detail.id === st.run.id && (st.detail.updated_at || "") >= (st.run.updated_at || "") ? st.detail : st.run, body = el("div", { class: "body", id: pid }), mode = runMode(r);
+      var active = ACTIVE.indexOf(r.status) >= 0;
+      body.appendChild(el("p", { class: "muted", text: (r.trigger === "manual" ? "Rodada pelo time" : "Criada pela agenda") + " · " + plural(r.attempts, "tentativa com falha nesta etapa", "tentativas com falha nesta etapa")
+        + (active && r.next_step_at ? " · próximo passo a partir de " + stamp(r.next_step_at, tz) : "") + (r.finished_at ? " · encerrada " + date(r.finished_at, tz) : "") + (r.simulated ? " · simulação: texto ou mídia de exemplo" : "") }));
+      if (r.status === "falhou") body.appendChild(note("Falhou na etapa " + (STEP[r.step] || r.step) + ": " + (r.error || "sem mensagem registrada") + (r.error_code ? " (código " + r.error_code + ")" : ""), "bad"));
+      else if (r.error) body.appendChild(note("A última tentativa falhou: " + r.error + ". O agente tenta de novo a partir de " + stamp(r.next_step_at, tz) + ".", "warn"));
+      if (r.feedback) body.appendChild(el("p", { class: "note", text: "Pedido de ajuste do cliente: " + r.feedback }));
+      if (r.resultado) body.appendChild(el("p", { class: "note", text: "Resultado: " + r.resultado }));
+      // midia manual: briefing e envio
+      if (r.status === "aguardando_midia" && mode === "manual") {
+        var sentEv = mediaSent(st.events);
+        if ((st.sent || sentEv) && !st.again) body.appendChild(el("div", { class: "notice" },
+          el("p", { text: "Mídia enviada pelo time" + (sentEv ? " em " + stamp(sentEv.created_at, tz) : "") + ". O agente segue para a fila de aprovação no próximo ciclo (até 2 minutos)." }),
+          el("p", { style: "margin-top:8px" }, el("button", { class: "btn ghost sm", type: "button", text: "Enviar outra mídia no lugar", onclick: function () { st.again = true; redraw(st); } }))));
+        else body.appendChild(uploader(st, r));
+      }
+      else if (r.status === "aguardando_midia") body.appendChild(note("Aguardando o gerador de mídia" + (r.media_job && r.media_job.provider ? " (" + r.media_job.provider + ")" : "") + (r.media_job && r.media_job.started_at ? ", pedido feito em " + date(r.media_job.started_at, tz) : "") + ". O agente consulta a cada ciclo."));
+      if (r.plan) body.appendChild(sec("Plano", kv("Tema", r.plan.tema), kv("Pilar", r.plan.pilar), kv("Objetivo", r.plan.objetivo), kv("Ângulo", r.plan.angulo)));
+      if (r.script) {
+        var sc = r.script, hooks = el("div", { class: "items" }), parts = el("div", { class: "items" });
+        (sc.hooks || []).forEach(function (h) {
+          hooks.appendChild(el("div", { class: "item" }, el("span", { class: "side" }, pill("nota " + num(h.nota), h.texto === sc.hook ? "ok" : ""), h.texto === sc.hook ? pill("escolhida", "fix") : null, h.formula ? el("span", { class: "hint", text: h.formula }) : null), el("span", { text: h.texto })));
+        });
+        (sc.beats || []).forEach(function (b) { parts.appendChild(el("div", { class: "item" }, el("b", { text: b.tempo }), el("span", { text: "Fala: " + (b.fala || "sem fala") }), el("span", { class: "muted", text: "Tela: " + (b.tela || "sem texto") }))); });
+        (sc.slides || []).forEach(function (x, i) { parts.appendChild(el("div", { class: "item" }, el("b", { text: "Slide " + (i + 1) + ": " + x.titulo }), el("span", { text: x.texto }))); });
+        body.appendChild(sec("Roteiro", (sc.hooks || []).length ? el("span", { class: "hint", text: "Opções de abertura, com a nota de cada uma (0 a 100)" }) : null, (sc.hooks || []).length ? hooks : kv("Abertura", sc.hook),
+          (sc.beats || []).length || (sc.slides || []).length ? el("span", { class: "hint", text: (sc.beats || []).length ? "Roteiro por trecho" : "Slides" }) : null, parts.children.length ? parts : null,
+          kv("Conceito visual", sc.conceito_visual), sc.duracao_s ? kv("Duração", plural(sc.duracao_s, "segundo", "segundos")) : null));
+      }
+      if (r.copy) {
+        var al = (r.copy.alertas || []).length ? el("div", { class: "notice warn" }, el("b", { text: "Alertas do revisor de texto (" + r.copy.alertas.length + ")" })) : null;
+        if (al) r.copy.alertas.forEach(function (x) { al.appendChild(el("p", { text: x })); });
+        body.appendChild(sec("Copy", kv("Título interno", r.copy.titulo), kv("Legenda", r.copy.legenda), kv("Hashtags", r.copy.hashtags), al));
+      }
+      if (r.media && r.media.length) {
+        var th = el("div", { class: "thumbs" });
+        r.media.forEach(function (m, i) {
+          var a = el("a", { href: m.url, target: "_blank", rel: "noopener", "aria-label": "Abrir mídia " + (i + 1) + " (" + (m.kind === "video" ? "vídeo" : "imagem") + ")" });
+          if (m.kind !== "video" || m.thumb) a.appendChild(el("img", { src: m.thumb || m.url, alt: "", loading: "lazy" })); else { var v = el("video", { src: m.url, preload: "metadata" }); v.muted = true; a.appendChild(v); }
+          th.appendChild(a);
+        });
+        body.appendChild(sec("Mídia (" + r.media.length + ")", th));
+      }
+      // linha do tempo
+      var tl = el("ol", { class: "tl" });
+      (st.events || []).forEach(function (e) {
+        tl.appendChild(el("li", { class: e.status }, el("span", { class: "meta" }, el("b", { text: stamp(e.created_at, tz) }), el("span", { text: STEP[e.step] || e.step }), el("span", { text: EV_STATUS[e.status] || e.status }), e.duration_ms != null ? el("span", { text: dur(e.duration_ms) }) : null),
+          el("span", { class: "pre", text: plain(e.message, tz) }),
+          e.detail ? el("details", null, el("summary", { text: "Detalhe técnico" }), el("pre", { class: "json", text: JSON.stringify(e.detail, null, 2) })) : null));
+      });
+      body.appendChild(sec("Linha do tempo" + (st.events ? " (" + plural(st.events.length, "evento", "eventos") + ")" : ""),
+        st.err ? note("Não foi possível carregar os eventos: " + st.err, "bad") : st.events == null ? el("p", { class: "muted", text: "Carregando os eventos..." }) : st.events.length ? tl : el("p", { class: "muted", text: "Nenhum evento gravado para esta execução." })));
+      // acoes: so as que a API aceita neste estado
+      var acts = el("div", { class: "side" });
+      if (active && r.status !== "publicando") acts.appendChild(el("button", { class: "btn danger sm", type: "button", text: "Cancelar execução", onclick: function (ev) {
+        var b = ev.currentTarget; if (held(b)) return;
+        if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Confirmar cancelamento"; setTimeout(function () { delete b.dataset.sure; if (!held(b)) b.textContent = "Cancelar execução"; }, 4000); return; }
+        hold(b, true); api("POST", "/admin/runs/" + r.id + "/cancel").then(function () { toast("Execução cancelada."); load(); }).catch(function (e) { hold(b, false); fail(e); });
+      } }));
+      if (r.status === "falhou" && r.step !== "publicar") acts.appendChild(el("button", { class: "btn sm", type: "button", text: "Retomar da etapa que falhou", onclick: function (ev) {
+        var b = ev.currentTarget; if (held(b)) return; hold(b, true);
+        api("POST", "/admin/runs/" + r.id + "/retry").then(function () { toast("Execução retomada. O agente tenta de novo no próximo ciclo."); load(); }).catch(function (e) { hold(b, false); fail(e); });
+      } }));
+      if (r.status === "publicando") acts.appendChild(el("span", { class: "hint", text: "O post já foi aprovado. Para tirar da agenda, devolva o criativo na página Clientes." }));
+      if (r.status === "falhou" && r.step === "publicar") acts.appendChild(el("span", { class: "hint", text: "A falha foi na publicação: use Tentar de novo no post, na página Clientes." }));
+      if (acts.children.length) body.appendChild(acts);
+      return body;
+    }
+    function uploader(st, r) {
+      var rule = MEDIA_RULE[r.format] || MEDIA_RULE.imagem, fid = "up-" + r.id;
+      var input = el("input", { type: "file", id: fid, accept: rule.accept, multiple: rule.multiple }), listBox = el("p", { class: "hint" }), err = el("div", { role: "alert" }), prog = el("p", { class: "hint", role: "status" });
+      var send = el("button", { class: "btn", type: "button", text: "Enviar mídia", disabled: true }), clear = el("button", { class: "btn ghost sm", type: "button", text: "Limpar", hidden: true });
+      function files() { return Array.prototype.slice.call(input.files || []); }
+      function check() {
+        var f = files(), p = f.length ? mediaProblem(r.format, f) : "";
+        st.lock = f.length > 0; clear.hidden = !f.length; err.textContent = ""; if (p) err.appendChild(note(p, "bad"));
+        listBox.textContent = f.length ? f.map(function (x, i) { return (i + 1) + ". " + x.name + " (" + new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(x.size / 1048576) + " MB)"; }).join("  ") : "";
+        send.disabled = !f.length || !!p;
+      }
+      input.addEventListener("change", check);
+      clear.addEventListener("click", function () { input.value = ""; check(); });
+      send.addEventListener("click", function () {
+        var f = files(), p = mediaProblem(r.format, f); if (p) return check();
+        send.disabled = true; input.disabled = true; clear.hidden = true; st.lock = true; err.textContent = "";
+        f.reduce(function (chain, file, i) {
+          return chain.then(function (items) {
+            prog.textContent = "Enviando " + (i + 1) + " de " + f.length + ": " + file.name;
+            var isVid = file.type.indexOf("video/") === 0;
+            return prepare(file, isVid).then(function (media) {
+              return upload(clientId, media.blob, media.name, media.type).then(function (path) {
+                return (media.thumb ? upload(clientId, media.thumb, "capa.jpg", "image/jpeg").catch(function () { return null; }) : Promise.resolve(null)).then(function (thumbPath) {
+                  items.push({ media_path: path, kind: isVid ? "video" : "image", thumb_path: thumbPath || undefined }); return items;
+                });
+              });
+            });
+          });
+        }, Promise.resolve([])).then(function (items) {
+          prog.textContent = "Arquivos enviados. Registrando na execução...";
+          return api("POST", "/admin/runs/" + r.id + "/media", { items: items });
+        }).then(function () {
+          st.lock = false; st.sent = true; st.again = false; toast("Mídia enviada. O agente segue no próximo ciclo."); redraw(st);
+          var hb = st.node.querySelector("button"); if (hb) hb.focus({ preventScroll: true });
+          load();
+        }).catch(function (e) {
+          if (e.status === 401) return fail(e);
+          prog.textContent = ""; input.disabled = false; send.disabled = false; clear.hidden = false;
+          err.appendChild(note("A mídia não foi registrada: " + e.message + " Os arquivos continuam escolhidos: tente de novo.", "bad"));
+        });
+      });
+      return el("div", { class: "upl" }, el("b", { text: "Falta a mídia deste post" }),
+        r.briefing ? el("div", { class: "sec" }, el("span", { class: "label", text: "Briefing para quem produz" }), el("div", { class: "note pre", text: r.briefing }), el("span", null, copyBtn(r.briefing, "Copiar briefing"))) : el("p", { class: "muted", text: "Esta execução não trouxe briefing. Use o roteiro abaixo." }),
+        el("label", { class: "label", htmlFor: fid, text: "Arquivo da mídia" }), el("span", { class: "hint", text: rule.text + " Imagens são convertidas para JPEG antes do envio." }),
+        input, listBox, err, el("div", { class: "side" }, send, clear), prog);
+    }
+    app.appendChild(el("p", { class: "muted", text: "Carregando o agente..." }));
+    load(); s.every(15000, load);
+    return s;
+  }
+
+  // ---------- 4. Ao vivo ----------
+  function viewVivo(filterId) {
+    var s = scope(), handle = null, cur = UUID.test(filterId || "") ? filterId : "", sig = "";
+    var filter = el("select", { id: "liveFilter" }), box = el("div"), msg = el("p", { class: "hint", role: "status" });
+    function agentsFor() { var all = liveAgents(CENTRAL && CENTRAL.agents); return cur ? all.filter(function (a) { return a.client_id === cur; }) : all; }
+    function fill() {
+      var all = liveAgents(CENTRAL && CENTRAL.agents); filter.textContent = "";
+      filter.appendChild(el("option", { value: "", text: "Todos os agentes (" + all.length + ")" }));
+      all.forEach(function (a) { filter.appendChild(el("option", { value: a.client_id, text: a.name + (a.is_demo ? " (demonstração)" : "") })); });
+      if (cur && !all.some(function (a) { return a.client_id === cur; })) cur = "";
+      filter.value = cur;
+    }
+    function mount() {
+      if (handle && handle.stop) { try { handle.stop(); } catch (e) {} }
+      var list = agentsFor();
+      if (!list.length && !cur) { box.textContent = ""; box.appendChild(el("p", { class: "muted", text: "Nenhum agente para mostrar. Crie o primeiro em Novo agente." })); handle = null; return; }
+      handle = mountLive(box, s, list, cur || null); sig = JSON.stringify(list);
+    }
+    filter.addEventListener("change", function () { cur = filter.value; try { history.replaceState(null, "", "#vivo" + (cur ? "/" + cur : "")); } catch (e) {} mount(); });
+    app.appendChild(el("div", { class: "f" }, el("h1", { text: "Ao vivo" }),
+      el("p", { class: "muted", text: "Cada agente é um nó ligado às seis etapas: planejar, roteiro, copy, gerar mídia, fila de aprovação e publicar. Uma linha só acende quando a etapa roda de verdade, a partir dos eventos gravados no banco. Clique em uma execução para abrir os detalhes." })));
+    app.appendChild(el("div", { class: "panel" }, el("div", { class: "grid" }, field("Agente", filter, { hint: "Mostra um agente só ou todos." })), box, msg));
+    fill(); mount();
+    function refresh() {
+      loadCentral().then(function () {
+        if (!s.alive) return; fill();
+        var list = agentsFor(), n = JSON.stringify(list);
+        if (n !== sig) { if (handle && handle.setAgents) { handle.setAgents(list); sig = n; } else mount(); }
+        msg.textContent = "";
+      }).catch(function (e) { if (!s.alive) return; if (e.status === 401) return fail(e); msg.textContent = "Não foi possível atualizar a lista de agentes: " + e.message; });
+    }
+    if (!fresh()) refresh();
+    s.every(30000, refresh);
+    return s;
+  }
+
+  // ---------- 5. Chat de diagnostico ----------
+  var CHAT_EXAMPLES = ["Por que o último post falhou?", "Quais agentes estão parados e por quê?", "Dá para publicar story com música?"];
+  function viewChat() {
+    var s = scope(), thread = el("div", { class: "thread", role: "log", "aria-live": "polite", "aria-label": "Conversa" }), wait = el("div", { role: "status" }), past = el("div", { class: "rows" });
+    var input = el("textarea", { id: "chatQ", rows: 2, maxLength: 2000, placeholder: "Ex.: por que o post de ontem do Café Aurora não saiu?" }), sendBtn = el("button", { class: "btn", type: "submit", text: "Perguntar" });
+    var ex = el("div", { class: "side" });
+    function tzOf(name) { var a = name && CENTRAL && (CENTRAL.agents || []).filter(function (x) { return x.client.name === name; })[0]; return a ? a.client.timezone : undefined; }
+    function answer(m) {
+      var node = el("div", { class: "msg" });
+      node.appendChild(el("div", { class: "side" }, pill(m.mode === "claude" ? "Resposta por Claude" : "Modo regras", m.mode === "claude" ? "ok" : "fix"), m.duration_ms != null ? el("span", { class: "hint", text: "em " + dur(m.duration_ms) }) : null,
+        m.at ? el("span", { class: "hint", text: clock(m.at) }) : null));
+      if (m.mode !== "claude") node.appendChild(el("p", { class: "hint", text: "Modo regras: resposta montada por consultas fixas, sem interpretação livre da pergunta. É o modo usado quando o Claude não está disponível." }));
+      node.appendChild(el("p", { class: "pre", text: m.text || "Sem texto de resposta." }));
+      if ((m.logs || []).length) {
+        var logs = el("div", { class: "logs" });
+        m.logs.forEach(function (l) {
+          logs.appendChild(el("div", { class: "log" + (l.status === "falhou" ? " falhou" : "") }, el("b", { text: stamp(l.at, tzOf(l.client)) }), el("span", { text: l.client || "sem conta" }), el("span", { text: l.step ? (STEP[l.step] || l.step) : "sem etapa" }),
+            el("span", { text: l.status ? (EV_STATUS[l.status] || l.status) : "" }), el("span", { class: "m pre", text: plain(l.message, tzOf(l.client)) })));
+        });
+        node.appendChild(el("div", { class: "sec" }, el("span", { class: "label", text: "Registros usados na resposta (" + m.logs.length + ")" }), logs,
+          el("span", { class: "hint", text: "Data, conta, etapa, situação e mensagem. Horas no fuso de cada cliente; sem cliente identificado, no horário deste computador." })));
+      }
+      if ((m.tools || []).length) {
+        var tl = el("div", { class: "items" });
+        m.tools.forEach(function (t) {
+          var inp = t.input && Object.keys(t.input).length ? JSON.stringify(t.input) : "sem parâmetros";
+          tl.appendChild(el("div", { class: "item" }, el("b", { text: t.name }), el("span", { class: "meta", text: inp }), t.summary ? el("span", { text: t.summary }) : null));
+        });
+        node.appendChild(el("details", null, el("summary", { text: "Consultas usadas (" + m.tools.length + ")" }), tl));
+      }
+      return node;
+    }
+    function draw() {
+      thread.textContent = "";
+      if (!CHAT.msgs.length) thread.appendChild(el("p", { class: "muted", text: "Nenhuma pergunta nesta sessão. Escreva abaixo ou use um dos exemplos." }));
+      CHAT.msgs.forEach(function (m) {
+        if (m.role === "user") thread.appendChild(el("div", { class: "msg me" }, el("span", { class: "label", style: "color:#DCE6F2", text: "Você" }), el("p", { class: "pre", text: m.text })));
+        else if (m.role === "error") thread.appendChild(el("div", { class: "msg bad", role: "alert" }, el("b", { text: "O chat não respondeu" }), el("p", { text: m.text }),
+          el("span", null, el("button", { class: "btn sm", type: "button", text: "Tentar de novo", disabled: CHAT.busy, onclick: function () { ask(m.question, true); } }))));
+        else thread.appendChild(answer(m));
+      });
+      wait.textContent = "";
+      if (CHAT.busy) wait.appendChild(el("div", { class: "notice" }, el("b", { text: "Consultando agentes, execuções e registros..." }),
+        el("p", { text: "A resposta pode levar até 2 minutos. Pode esperar nesta tela ou em outra: a resposta aparece aqui." }), el("p", { class: "hint", "aria-hidden": "true", id: "chatClock", text: "" })));
+      sendBtn.disabled = CHAT.busy; Array.prototype.forEach.call(ex.querySelectorAll("button"), function (b) { b.disabled = CHAT.busy; });
+      tick();
+    }
+    function tick() { var c = document.getElementById("chatClock"); if (c && CHAT.busy) c.textContent = "Esperando há " + Math.round((Date.now() - CHAT.since) / 1000) + " s"; }
+    function ask(q, retry) {
+      q = String(q || "").trim(); if (!q || CHAT.busy) return;
+      var hist = [];
+      CHAT.msgs.forEach(function (m, i) { var u = CHAT.msgs[i - 1]; if (m.role === "assistant" && u && u.role === "user") hist.push({ role: "user", text: u.text }, { role: "assistant", text: m.text }); });
+      hist = hist.slice(-6);
+      if (retry) CHAT.msgs = CHAT.msgs.filter(function (m) { return !(m.role === "error" && m.question === q); }); else CHAT.msgs.push({ role: "user", text: q });
+      CHAT.busy = true; CHAT.since = Date.now(); input.value = ""; input.focus({ preventScroll: true }); draw(); wait.scrollIntoView({ block: "nearest" });
+      var body = { question: q }, mine = CHAT; if (hist.length) body.history = hist;
+      api("POST", "/admin/chat", body, 150000).then(function (r) {
+        if (CHAT !== mine) return;
+        CHAT.busy = false; CHAT.msgs.push({ role: "assistant", id: r.id, text: r.answer, mode: r.mode, tools: r.tools || [], logs: r.logs || [], duration_ms: r.duration_ms, at: new Date() });
+        if (view && view.chat) { view.redraw(); view.history(); }
+      }).catch(function (e) {
+        if (CHAT !== mine) return;
+        CHAT.busy = false; if (e.status === 401) return fail(e);
+        CHAT.msgs.push({ role: "error", text: e.message, question: q });
+        if (view && view.chat) view.redraw();
+      });
+    }
+    function history() {
+      api("GET", "/admin/chat/history?limit=30").then(function (h) {
+        if (!s.alive) return; past.textContent = "";
+        var mine = {}; CHAT.msgs.forEach(function (m) { if (m.id != null) mine[m.id] = true; });
+        var items = (h.items || []).filter(function (x) { return !mine[x.id]; });
+        if (!items.length) { past.appendChild(el("p", { class: "muted", text: "Nenhuma pergunta anterior registrada." })); return; }
+        items.forEach(function (x) {
+          past.appendChild(el("details", { class: "item" }, el("summary", null, x.question),
+            el("span", { class: "side" }, pill(x.mode === "claude" ? "Resposta por Claude" : "Modo regras", x.mode === "claude" ? "ok" : "fix"), el("span", { class: "hint", text: date(x.created_at) + ", horário deste computador" })),
+            el("p", { class: "pre", text: x.answer || "Sem resposta registrada." }),
+            el("span", null, el("button", { class: "btn ghost sm", type: "button", text: "Perguntar de novo", onclick: function () { input.value = x.question; input.focus(); } }))));
+        });
+      }).catch(function (e) { if (!s.alive) return; if (e.status === 401) return fail(e); past.textContent = ""; past.appendChild(note("Não foi possível carregar as perguntas anteriores: " + e.message, "bad")); });
+    }
+    s.chat = true; s.redraw = draw; s.history = history;
+    CHAT_EXAMPLES.forEach(function (q) { ex.appendChild(el("button", { class: "btn ghost sm", type: "button", text: q, style: "white-space:normal;text-align:left;padding-block:6px", onclick: function () { ask(q); } })); });
+    var form = el("form", { class: "ask", onsubmit: function (ev) { ev.preventDefault(); ask(input.value); } },
+      el("label", { class: "label", htmlFor: "chatQ", text: "Sua pergunta" }), el("div", { class: "line" }, input, sendBtn), el("span", { class: "hint", text: "Enter envia. Shift + Enter quebra a linha." }));
+    input.addEventListener("keydown", function (ev) { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); ask(input.value); } });
+    app.appendChild(el("div", { class: "f" }, el("h1", { text: "Chat de diagnóstico" }),
+      el("p", { class: "muted", text: "Pergunte em linguagem simples o que aconteceu ou se dá para fazer algo. O chat consulta todos os agentes, execuções, eventos, posts e tentativas de publicação e responde com o registro que sustenta a resposta." })));
+    app.appendChild(note("Somente leitura: o chat só consulta. Ele não altera configuração, não roda agente e não publica nada."));
+    app.appendChild(el("section", { class: "panel", "aria-label": "Conversa com o chat de diagnóstico" }, thread, wait, el("div", { class: "sec" }, el("span", { class: "label", text: "Exemplos" }), ex), form));
+    app.appendChild(el("section", { class: "panel", "aria-labelledby": "pastT" }, el("h2", { id: "pastT", text: "Perguntas anteriores" }), past));
+    past.appendChild(el("p", { class: "muted", text: "Carregando..." }));
+    draw(); history(); s.every(1000, tick);
+    return s;
+  }
+
+  // ---------- inicio ----------
+  try { KEY = localStorage.getItem(STORE) || ""; } catch (e) {}
+  if (!API) { app.appendChild(el("p", { text: "config.js sem o endereço da API." })); }
+  else if (KEY) enter(); else gate();
+})();
+</script>
+</body>
+</html>

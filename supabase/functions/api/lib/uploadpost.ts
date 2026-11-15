@@ -1,8 +1,10 @@
 // Cliente do Upload-Post (provedor de publicacao). Usado para o TikTok, que so publica em publico
 // por API quando o app passou pela auditoria do TikTok: o provedor ja e auditado.
 // Referencia: docs.upload-post.com
+import { secret } from "./secrets.ts";
 const BASE = "https://api.upload-post.com";
-const apiKey = () => Deno.env.get("UPLOAD_POST_API_KEY") ?? "";
+// Chave: segredo da funcao no Supabase ou valor colado no painel (Vault).
+const apiKey = () => secret("UPLOAD_POST_API_KEY");
 
 export const uploadPostConfigured = () => apiKey().length > 10;
 

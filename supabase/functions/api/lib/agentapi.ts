@@ -1,10 +1,9 @@
 // Central de agentes: rotas do painel do time (x-admin-key) para listar, criar, configurar e acompanhar os agentes.
 import { db, getSetting, HttpError, igConfigured, isUuid, json, must, portalUrl, publicUrl, readJson, str } from "./core.ts";
-import { agentPatch, createClientWithAgent, newPortalLink } from "./admin.ts";
-import { AGENT_FIELDS, createRun, emit, ENGINE_VERSION, nextSlots, STEPS } from "./agents.ts";
-import { generatorStatus } from "./generators.ts";
+import { agentPatch, createClientWithAgent, newPortalLink } from "./agentcfg.ts";
+import { AGENT_FIELDS, cancelPlanned, createRun, emit, ENGINE_VERSION, nextSlots, STEPS, writeRun } from "./agents.ts";
+import { providerStatus as generatorStatus, uploadPostKeyConfigured as uploadPostConfigured } from "./secrets.ts";
 import { FORMATOS, Formato } from "./gentypes.ts";
-import { uploadPostConfigured } from "./uploadpost.ts";
 
 // deno-lint-ignore no-explicit-any
 type Row = any;
@@ -36,7 +35,8 @@ async function central() {
     db.from("clients").select(`id, name, slug, segment, status, timezone, is_demo, created_at,
       agents ( ${AGENT_FIELDS} ),
       social_accounts ( platform, username, status, simulated, cooldown_until, last_error )`).order("created_at"),
-    db.from("agent_runs").select(RUN_FIELDS).order("started_at", { ascending: false }).limit(400),
+    // Execucoes em andamento e as que terminaram na ultima semana (para ultima execucao e erros).
+    db.from("agent_runs").select(RUN_FIELDS).or(`status.in.(${ACTIVE.join(",")}),started_at.gte."${week}"`).order("started_at", { ascending: false }).limit(1000),
     db.from("posts").select("id, client_id, platform, status, scheduled_for, creatives!posts_creative_id_fkey ( title, format, story_of )")
       .in("status", ["scheduled", "processing"]).eq("is_example", false).order("scheduled_for").limit(400),
     db.from("posts").select("id, client_id, platform, last_error, last_error_code, scheduled_for, creatives!posts_creative_id_fkey ( title )")
@@ -75,11 +75,16 @@ async function central() {
     return {
       client: { id: c.id, name: c.name, slug: c.slug, segment: c.segment, status: c.status, timezone: c.timezone, is_demo: c.is_demo },
       agent, accounts, queue_pending: pend[c.id] ?? 0,
-      next_slots: agent.automation === "ligada" ? nextSlots(agent, c.timezone || "America/Sao_Paulo", now, 4) : [],
+      next_slots: agent.automation === "ligada" ? safeSlots(agent, c.timezone, now, 4) : [],
       upcoming_posts: posts, active_runs: active, last_run: mine[0] ?? null, errors, needs,
     };
   });
   return json({ now: now.toISOString(), engine, agents });
+}
+
+// Proximos horarios sem derrubar a tela quando a configuracao de um agente esta invalida.
+function safeSlots(agent: Row, tz: string | null, now: Date, n: number): string[] {
+  try { return nextSlots(agent, tz || "America/Sao_Paulo", now, n); } catch (_) { return []; }
 }
 
 async function loadAgent(clientId: string) {
@@ -98,7 +103,7 @@ async function detail(clientId: string) {
   ]);
   return json({
     client: { ...client, agents: undefined }, agent, accounts: must(accounts) ?? [], engine,
-    next_slots: nextSlots(agent, client.timezone || "America/Sao_Paulo", new Date(), 6),
+    next_slots: safeSlots(agent, client.timezone, new Date(), 6),
     runs: (must(runs) ?? []).map(runView),
   });
 }
@@ -124,6 +129,7 @@ async function patchAgent(clientId: string, req: Request) {
   if (!Object.keys(patch).length) throw new HttpError(400, "empty", "Nada para atualizar.");
   must(await db.from("agents").update({ ...patch, config_version: (agent.config_version ?? 1) + 1, updated_at: new Date().toISOString() }).eq("id", agent.id));
   await emit({ id: null, client_id: clientId }, "config", "info", `Configuração atualizada pelo time: ${Object.keys(patch).join(", ")}.`, { campos: Object.keys(patch), versao: (agent.config_version ?? 1) + 1 });
+  if ("post_times" in patch || "posts_per_week" in patch) await cancelPlanned(agent.id, clientId);
   return json({ ok: true, config_version: (agent.config_version ?? 1) + 1 });
 }
 
@@ -149,6 +155,7 @@ async function bulkPatch(req: Request) {
     try { guardProviders(patch, c.is_demo); } catch (e) { skipped.push({ name: c.name, reason: (e as Error).message }); continue; }
     must(await db.from("agents").update({ ...patch, config_version: (agent.config_version ?? 1) + 1, updated_at: new Date().toISOString() }).eq("id", agent.id));
     await emit({ id: null, client_id: c.id }, "config", "info", `Configuração atualizada em lote: ${Object.keys(patch).join(", ")}.`, { campos: Object.keys(patch) });
+    if ("post_times" in patch || "posts_per_week" in patch) await cancelPlanned(agent.id, c.id);
     updated.push(c.name);
   }
   return json({ ok: true, updated, skipped });
@@ -192,38 +199,65 @@ async function runDetail(id: string) {
 async function cancelRun(id: string) {
   const run = await loadRun(id);
   if (!ACTIVE.includes(run.status)) throw new HttpError(409, "not_active", "Esta execução já terminou.");
-  if (run.status === "publicando") throw new HttpError(409, "publishing", "O post já foi aprovado. Para tirar da fila, devolva o criativo na página do cliente.");
-  must(await db.from("agent_runs").update({ status: "cancelado", finished_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id));
-  await emit(run, run.step, "info", "Execução cancelada pelo time.");
+  let removed = false;
+  if (run.creative_id) {
+    // O post so pode ser cancelado se nada foi enviado para a rede ainda.
+    const { data: kids } = await db.from("creatives").select("id").eq("story_of", run.creative_id);
+    const ids = [run.creative_id, ...(kids ?? []).map((k: Row) => k.id)];
+    const { data: sent } = await db.from("posts").select("id").in("creative_id", ids).in("status", ["processing", "published"]).limit(1);
+    if (sent?.length) throw new HttpError(409, "publishing", "Este post já foi enviado ou publicado em uma rede. Não dá para cancelar.");
+    const { data: c } = await db.from("creatives").select("status").eq("id", run.creative_id).maybeSingle();
+    if (c && ["pending", "approved"].includes(c.status)) {
+      await db.from("posts").delete().in("creative_id", ids).in("status", ["scheduled", "failed"]);
+      await db.from("creatives").delete().eq("story_of", run.creative_id);
+      must(await db.from("creatives").update({ status: "replaced" }).eq("id", run.creative_id).eq("client_id", run.client_id).in("status", ["pending", "approved"]));
+      removed = true;
+    }
+  }
+  const done = await writeRun(run, { status: "cancelado", finished_at: new Date().toISOString(), error: "Cancelada pelo time.", error_code: "cancelada_pelo_time" }, ACTIVE);
+  if (!done) throw new HttpError(409, "changed", "A execução mudou de estado agora há pouco. Atualize a tela e tente de novo.");
+  await emit(run, run.step, "info", removed ? "Execução cancelada pelo time. O criativo saiu da fila do cliente." : "Execução cancelada pelo time.");
   return json({ ok: true });
 }
 
 async function retryRun(id: string) {
   const run = await loadRun(id);
   if (run.status !== "falhou" || run.step === "publicar") throw new HttpError(409, "not_retryable", run.step === "publicar" ? "A falha foi na publicação: use Tentar de novo no post." : "Só execuções com falha podem ser retomadas.");
-  must(await db.from("agent_runs").update({ status: "rodando", attempts: 0, error: null, error_code: null, finished_at: null, next_step_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id));
+  if (run.error_code === "limite_revisoes") throw new HttpError(409, "not_retryable", "O cliente já pediu o número máximo de ajustes. Rode uma execução nova ou edite o criativo no painel.");
+  // Na etapa de midia, a retomada comeca um job novo: o anterior morreu ou expirou.
+  const data = run.step === "midia" ? { ...run.data, media_job: null } : run.data;
+  const done = await writeRun(run, { status: "rodando", attempts: 0, error: null, error_code: null, finished_at: null, data, next_step_at: new Date().toISOString() }, ["falhou"]);
+  if (!done) throw new HttpError(409, "changed", "A execução mudou de estado agora há pouco. Atualize a tela e tente de novo.");
   await emit(run, run.step, "info", "Execução retomada pelo time a partir da etapa que falhou.");
   return json({ ok: true });
 }
 
-// Midia enviada pelo time para uma execucao que espera midia manual.
+// Midia enviada pelo time. Vale em qualquer modo (substitui o gerador quando ele demora ou falha).
+// { reuse: true } confirma a midia da versao anterior depois de um pedido de ajuste do cliente.
 async function runMedia(id: string, req: Request) {
   const run = await loadRun(id);
-  if (run.step !== "midia" || !["aguardando_midia", "rodando"].includes(run.status)) throw new HttpError(409, "not_waiting", "Esta execução não está esperando mídia.");
+  if (run.step !== "midia" || !["aguardando_midia", "rodando", "falhou"].includes(run.status)) throw new HttpError(409, "not_waiting", "Esta execução não está esperando mídia.");
   const b = await readJson(req);
-  const raw = Array.isArray(b.items) ? b.items as Record<string, unknown>[] : [];
-  if (!raw.length || raw.length > 10) throw new HttpError(400, "bad_items", "Envie de 1 a 10 mídias.");
-  const items = raw.map((it, i) => {
-    const path = str(it.media_path, 500);
-    if (!path.startsWith(`${run.client_id}/`)) throw new HttpError(400, "bad_path", `Mídia ${i + 1}: o arquivo não pertence a este cliente.`);
-    const kind = str(it.kind, 10) === "video" || /\.(mp4|mov)$/i.test(path) ? "video" : "image";
-    const thumb = str(it.thumb_path, 500);
-    return { kind, url: publicUrl(path), thumb: thumb && thumb.startsWith(`${run.client_id}/`) ? publicUrl(thumb) : null };
-  });
+  let items: { kind: string; url: string; thumb: string | null }[];
+  if (b.reuse === true) {
+    if (!Array.isArray(run.data?.media_prev) || !run.data.media_prev.length) throw new HttpError(409, "no_previous", "Não há mídia da versão anterior para reaproveitar.");
+    items = run.data.media_prev;
+  } else {
+    const raw = Array.isArray(b.items) ? b.items as Record<string, unknown>[] : [];
+    if (!raw.length || raw.length > 10) throw new HttpError(400, "bad_items", "Envie de 1 a 10 mídias.");
+    items = raw.map((it, i) => {
+      const path = str(it.media_path, 500);
+      if (!path.startsWith(`${run.client_id}/`)) throw new HttpError(400, "bad_path", `Mídia ${i + 1}: o arquivo não pertence a este cliente.`);
+      const kind = str(it.kind, 10) === "video" || /\.(mp4|mov)$/i.test(path) ? "video" : "image";
+      const thumb = str(it.thumb_path, 500);
+      return { kind, url: publicUrl(path), thumb: thumb && thumb.startsWith(`${run.client_id}/`) ? publicUrl(thumb) : null };
+    });
+  }
   if (run.format === "reel" && items[0].kind !== "video") throw new HttpError(400, "need_video", "Este post é um Reel: envie um vídeo.");
   if (run.format !== "carrossel" && items.length > 1) throw new HttpError(400, "single_only", "Este formato leva uma mídia só.");
-  must(await db.from("agent_runs").update({ data: { ...run.data, media_manual: items }, status: "aguardando_midia", next_step_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id));
-  await emit(run, "midia", "info", `Mídia enviada pelo time (${items.length}).`, { itens: items.length });
+  const done = await writeRun(run, { data: { ...run.data, media_manual: items }, status: "aguardando_midia", attempts: 0, error: null, error_code: null, finished_at: null, next_step_at: new Date().toISOString() }, [run.status]);
+  if (!done) throw new HttpError(409, "changed", "A execução mudou de estado agora há pouco. Atualize a tela e tente de novo.");
+  await emit(run, "midia", "info", b.reuse === true ? "O time confirmou a mídia da versão anterior." : `Mídia enviada pelo time (${items.length}).`, { itens: items.length });
   return json({ ok: true });
 }
 

@@ -13,6 +13,8 @@ export type AgentProfile = {
   // provas e numeros que pode citar, temas proibidos, uso de emoji.
   voice: { usa?: string; evita?: string; cta?: string; provas?: string; proibido?: string; emoji?: string };
   default_link: string | null; ai_label: boolean; story_default: boolean;
+  // Identidade visual da arte por template: { tema, fundo, texto, destaque, assinatura }.
+  brand?: { tema?: string; fundo?: string; texto?: string; destaque?: string; assinatura?: string };
 };
 
 export type GenContext = {
@@ -22,15 +24,19 @@ export type GenContext = {
   recentes: string[];              // titulos dos ultimos posts, para nao repetir tema
   feedback: string | null;         // pedido de ajuste do cliente, quando e uma nova versao
   revision: number;
+  run_id?: string;                 // execucao que esta pedindo o texto (o banco de pautas usa para marcar a pauta)
 };
 
-export type PlanItem = { tema: string; pilar: string; objetivo: string; angulo: string };
+// formato: so quando o gerador precisa trocar o formato do post (o banco de pautas entrega a pauta no formato dela).
+export type PlanItem = { tema: string; pilar: string; objetivo: string; angulo: string; formato?: Formato };
 
 export type Script = {
   hooks: { texto: string; formula: string; nota: number }[]; // opcoes de abertura, com nota de 0 a 100
   hook: string;                                              // abertura escolhida
   beats: { tempo: string; fala: string; tela: string }[];    // reel e story em video: fala e texto de tela por trecho
-  slides: { titulo: string; texto: string }[];               // carrossel: um item por slide
+  // Texto da arte. Carrossel: um item por slide (6 a 10). Imagem e story: um item so (titulo e apoio da arte).
+  // Em "texto", linhas separadas por quebra viram uma lista curta na arte.
+  slides: { titulo: string; texto: string }[];
   conceito_visual: string;                                   // o que a imagem ou o video mostra
   duracao_s: number | null;
 };
@@ -62,6 +68,16 @@ export type MediaRequest = {
   texto_na_arte: string[];   // textos que devem aparecer na arte (titulo do slide, texto de tela)
   duracao_s: number | null;  // video
   briefing: string;          // resumo legivel para quem vai produzir a midia a mao
+  // Conteudo estruturado para quem monta a arte por template (texto de cada slide, cores e assinatura).
+  arte?: ArtBrief;
+};
+
+export type ArtBrief = {
+  kicker: string;                               // rotulo curto (pilar)
+  slides: { titulo: string; texto: string }[];  // imagem e story: 1 item; carrossel: todos os slides
+  cta: string;                                  // chamada final
+  assinatura: string;                           // arroba ou site que assina a arte
+  brand: { tema?: string; fundo?: string; texto?: string; destaque?: string };
 };
 
 export type MediaItem = { kind: "image" | "video"; url: string; thumb: string | null };
@@ -75,8 +91,9 @@ export type MediaPoll =
 
 export interface MediaGenerator {
   readonly provider: string;
-  // manual = o time envia a midia pelo painel; async = o fornecedor gera e o motor consulta a cada ciclo.
-  readonly mode: "manual" | "async";
+  // manual = o time envia a midia pelo painel; async = o fornecedor gera e o motor consulta a cada ciclo;
+  // inline = fica pronta em segundos, e o motor consulta logo depois de iniciar (arte por template).
+  readonly mode: "manual" | "async" | "inline";
   /** Inicia a geracao e devolve a referencia do job. Nunca espera o resultado. */
   start(req: MediaRequest, profile: AgentProfile): Promise<{ ref: string; note: string | null }>;
   /** Consulta o job. */

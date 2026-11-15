@@ -122,7 +122,7 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, bad ? 8000 : 4000);
   }
   function api(method, path, body) {
-    return fetch(API + path, { method: method, headers: { "x-admin-key": KEY, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    return fetch((window.SRPOST.base ? window.SRPOST.base(path) : API) + path, { method: method, headers: { "x-admin-key": KEY, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok) { var e = new Error(j.message || "Erro " + r.status); e.status = r.status; throw e; } return j; }); },
         function () { throw new Error("Sem conexão com a API."); });
@@ -555,7 +555,60 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
   }
 
   // ---------- configuracao ----------
-  function loadConfig() { Promise.all([api("GET", "/admin/overview"), api("GET", "/admin/keys")]).then(function (r) { renderConfig(r[0].config, r[1]); }).catch(fail); }
+  function loadConfig() { Promise.all([api("GET", "/admin/overview"), api("GET", "/admin/keys")]).then(function (r) { renderConfig(r[0].config, r[1]); renderIntegrations(); }).catch(fail); }
+
+  // ---------- chaves e integracoes ----------
+  // O valor de uma chave nunca volta para a tela: a API so diz se existe, de onde veio e o resultado do teste.
+  function renderIntegrations() {
+    var host = el("section", { class: "panel", id: "integrations" }, el("h2", { text: "Chaves e integrações" }),
+      el("p", { class: "muted", text: "O que está configurado, o que falta, o que cada chave libera e onde colar. As chaves coladas aqui ficam criptografadas no banco e passam a valer em até 1 minuto." }),
+      el("p", { class: "muted", text: "Carregando..." }));
+    var first = app.querySelector("section.panel");
+    if (first && first.nextSibling) app.insertBefore(host, first.nextSibling); else app.appendChild(host);
+    api("GET", "/admin/integrations").then(function (d) { paint(d.items); }).catch(function (e) { host.lastChild.textContent = e.message; });
+    function paint(items) {
+      while (host.childNodes.length > 2) host.removeChild(host.lastChild);
+      var rows = el("div", { class: "rows" });
+      items.forEach(function (it) {
+        var result = el("p", { class: "muted", "aria-live": "polite" });
+        var pill = el("span", { class: "pill " + (it.configured ? "ok" : it.required ? "no" : "wait"), text: it.configured ? "Configurado" : it.required ? "Falta configurar" : "Opcional, não configurado" });
+        var box = el("div", { class: "row", style: "display:grid;gap:8px;align-items:start" },
+          el("div", { class: "head" }, el("b", { text: it.name }), pill),
+          el("span", null, el("b", { text: "Libera: " }), it.unlocks),
+          it.without && !it.configured ? el("span", { class: "muted" }, el("b", { text: "Sem ela: " }), it.without) : null,
+          el("span", { class: "muted" }, el("b", { text: "Onde: " }), it.where),
+          it.source ? el("span", { class: "muted", text: "Origem atual: " + it.source + "." }) : null,
+          it.note ? el("span", { class: "muted", text: it.note }) : null);
+        var actions = el("div", { class: "side" });
+        if (it.secret) {
+          var input = el("input", { type: "password", autocomplete: "off", spellcheck: "false", placeholder: it.format || "Cole a chave aqui", "aria-label": "Chave para " + it.name, style: "min-width:240px;flex:1" });
+          var save = el("button", { class: "btn sm", type: "button", text: "Salvar chave", onclick: function () {
+            if (input.value.trim().length < 10) { toast("Cole a chave completa.", true); input.focus(); return; }
+            save.disabled = true;
+            api("POST", "/admin/integrations/" + it.secret, { value: input.value.trim() }).then(function (r) {
+              input.value = ""; toast("Chave salva. Testando..."); paint(r.items);
+              var again = host.querySelector('[data-test="' + it.id + '"]'); if (again) again.click();
+            }).catch(function (e) { save.disabled = false; fail(e); });
+          } });
+          actions.appendChild(input); actions.appendChild(save);
+          if (it.source === "colada neste painel") actions.appendChild(el("button", { class: "btn danger sm", type: "button", text: "Remover", onclick: function () {
+            api("DELETE", "/admin/integrations/" + it.secret).then(function (r) { toast("Chave removida."); paint(r.items); }).catch(fail);
+          } }));
+        }
+        var test = el("button", { class: "btn ghost sm", type: "button", text: "Testar", "data-test": it.id, onclick: function () {
+          test.disabled = true; result.textContent = "Testando..."; result.style.color = "";
+          api("POST", "/admin/integrations/" + it.id + "/test").then(function (r) {
+            test.disabled = false; result.textContent = (r.ok ? "Funcionando. " : "Falhou. ") + r.message + " (" + r.ms + " ms)";
+            result.style.color = r.ok ? "var(--approve)" : "var(--error)";
+          }).catch(function (e) { test.disabled = false; result.textContent = e.message; result.style.color = "var(--error)"; });
+        } });
+        actions.appendChild(test);
+        box.appendChild(actions); box.appendChild(result);
+        rows.appendChild(box);
+      });
+      host.appendChild(rows);
+    }
+  }
   function renderConfig(cfg, keys) {
     app.textContent = "";
     var kv = function (label, value) { return el("div", null, el("span", { class: "label", text: label }), el("code", { text: value })); };
