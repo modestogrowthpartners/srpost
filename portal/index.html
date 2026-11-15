@@ -540,7 +540,10 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
       $("nav").hidden = false; $("tabs").hidden = false;
       document.title = "Sr. Post | " + data.client.name;
       renderAll();
-      show("aprovar");
+      // O link pode abrir direto em uma aba (ex.: ?aba=agente, usado pelo time para pedir a conexao das contas).
+      var aba = new URLSearchParams(location.search).get("aba");
+      show(aba === "agente" || aba === "posts" ? aba : "aprovar");
+      if (aba) history.replaceState(null, "", location.pathname + location.hash);
       afterReturn();
     }).catch(function (e) {
       if (e.status === 401) { store(null); gate("Link de acesso inválido", e.message, true); }

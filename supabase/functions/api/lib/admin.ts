@@ -12,10 +12,47 @@ function slugify(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 }
 
-function agentPatch(a: Record<string, unknown> | undefined) {
+const FORMATS = ["reel", "carrossel", "imagem", "story"];
+const VOICE_KEYS = ["usa", "evita", "cta", "provas", "proibido", "emoji"];
+
+// Configuracao do agente aceita pelo painel. Listas de valores sao validadas aqui (o banco nao tem check para elas).
+export function agentPatch(a: Record<string, unknown> | undefined) {
   if (!a || typeof a !== "object") return {};
   const out: Record<string, unknown> = {};
   for (const k of ["name", "role_line", "bio", "tone"]) if (k in a) out[k] = str(a[k], 600) || null;
+  if ("context" in a) out.context = str(a.context, 4000) || null;
+  if ("audience" in a) out.audience = str(a.audience, 600) || null;
+  if (Array.isArray(a.formats)) {
+    const list = a.formats.map((f) => str(f, 12)).filter((f, i, arr) => FORMATS.includes(f) && arr.indexOf(f) === i);
+    if (list.length) out.formats = list;
+  }
+  if (a.voice && typeof a.voice === "object" && !Array.isArray(a.voice)) {
+    const v: Record<string, string> = {};
+    for (const k of VOICE_KEYS) { const t = str((a.voice as Record<string, unknown>)[k], 600); if (t) v[k] = t; }
+    out.voice = v;
+  }
+  if ("default_link" in a) {
+    const link = str(a.default_link, 500);
+    if (link && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(link)) throw new HttpError(400, "bad_link", "Link padrão inválido (use um endereço completo, com https://).");
+    out.default_link = link || null;
+  }
+  const pick = (k: string, allowed: string[], label: string) => {
+    if (!(k in a)) return;
+    const v = str(a[k], 20);
+    if (!allowed.includes(v)) throw new HttpError(400, "bad_" + k, `${label} deve ser: ${allowed.join(", ")}.`);
+    out[k] = v;
+  };
+  pick("approval_mode", ["cliente", "automatica"], "Modo de aprovação");
+  pick("automation", ["ligada", "pausada"], "Automação");
+  pick("text_provider", ["claude", "simulado"], "Fornecedor de texto");
+  pick("media_provider", ["manual", "simulado", "higgsfield"], "Fornecedor de mídia");
+  if (typeof a.story_default === "boolean") out.story_default = a.story_default;
+  if (typeof a.ai_label === "boolean") out.ai_label = a.ai_label;
+  if ("lead_hours" in a) {
+    const h = Number(a.lead_hours);
+    if (!Number.isInteger(h) || h < 1 || h > 168) throw new HttpError(400, "bad_lead", "A antecedência deve ficar entre 1 e 168 horas.");
+    out.lead_hours = h;
+  }
   if ("name" in a && !out.name) out.name = "Agente Sr. Post";
   if (Array.isArray(a.pillars)) out.pillars = a.pillars.map((p) => str(p, 60)).filter(Boolean).slice(0, 8);
   if (Array.isArray(a.post_times)) {
@@ -73,7 +110,11 @@ async function overview() {
 }
 
 async function createClient(req: Request) {
-  const b = await readJson(req);
+  return json({ client: await createClientWithAgent(await readJson(req)) }, 201);
+}
+
+// Cria o cliente e o agente dele. Usado pelo painel e pelo assistente "Novo agente".
+export async function createClientWithAgent(b: Record<string, unknown>): Promise<{ id: string; name: string; slug: string; is_demo: boolean }> {
   const name = str(b.name, 80);
   if (name.length < 2) throw new HttpError(400, "bad_name", "Informe o nome do cliente.");
   let slug = slugify(str(b.slug, 60) || name);
@@ -83,9 +124,9 @@ async function createClient(req: Request) {
   const client = must(await db.from("clients").insert({
     name, slug, segment: str(b.segment, 80) || null, timezone: str(b.timezone, 60) || "America/Sao_Paulo",
     is_demo: b.is_demo === true,
-  }).select("id, name, slug, is_demo").single()) as { id: string };
+  }).select("id, name, slug, is_demo").single()) as { id: string; name: string; slug: string; is_demo: boolean };
   must(await db.from("agents").insert({ client_id: client.id, ...agentPatch(b.agent as Record<string, unknown>) }));
-  return json({ client }, 201);
+  return client;
 }
 
 async function updateClient(id: string, req: Request) {
@@ -230,13 +271,18 @@ async function createLink(id: string, req: Request) {
   const b = await readJson(req);
   const { data: c } = await db.from("clients").select("id").eq("id", id).maybeSingle();
   if (!c) throw new HttpError(404, "not_found", "Cliente não encontrado.");
-  const token = randomToken(32);
   const days = typeof b.expires_days === "number" && b.expires_days > 0 ? Math.min(730, b.expires_days) : null;
+  return json({ url: await newPortalLink(id, str(b.label, 80) || null, days) }, 201);
+}
+
+// Gera um link magico do portal. O endereco completo so existe nesta resposta: no banco fica apenas o hash.
+export async function newPortalLink(clientId: string, label: string | null, days: number | null = null): Promise<string> {
+  const token = randomToken(32);
   must(await db.from("portal_links").insert({
-    client_id: id, token_hash: await sha256Hex(token), label: str(b.label, 80) || null,
+    client_id: clientId, token_hash: await sha256Hex(token), label,
     expires_at: days ? new Date(Date.now() + days * 86_400_000).toISOString() : null,
   }));
-  return json({ url: `${await portalUrl()}#${token}` }, 201);
+  return `${await portalUrl()}#${token}`;
 }
 
 async function deleteCreative(id: string) {

@@ -87,6 +87,7 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
 <header class="top"><div class="wrap">
   <b>Sr. Post <span class="muted" style="font-size:0.8rem;font-family:var(--body);font-weight:400">painel do time</span></b>
   <nav id="navbar" hidden>
+    <a class="btn ghost sm" href="agentes.html">Agentes</a>
     <button class="btn ghost sm" type="button" id="navClients">Clientes</button>
     <button class="btn ghost sm" type="button" id="navConfig">Configuração</button>
     <button class="btn ghost sm" type="button" id="navOut">Sair</button>
@@ -489,9 +490,10 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
       if (!Object.keys(u.networks).length) paceBox.appendChild(el("p", { class: "muted", text: "Nenhuma conta conectada." }));
     }).catch(function (e) { paceBox.textContent = ""; paceBox.appendChild(el("p", { class: "muted", text: e.message })); });
     if (c.is_demo) {
-      [["ok", "Ativar Instagram simulado"], ["falha", "Simular falha de publicação"], ["remover", "Remover conta simulada"]].forEach(function (b) {
-        simBtns.appendChild(el("button", { class: "btn ghost sm", type: "button", text: b[1], onclick: function () {
-          api("POST", "/admin/clients/" + id + "/sim-account", { platform: "instagram", mode: b[0] }).then(function () { toast("Conta simulada atualizada."); loadClient(id); }).catch(fail);
+      [["instagram", "ok", "Ativar Instagram simulado"], ["tiktok", "ok", "Ativar TikTok simulado"], ["instagram", "falha", "Simular falha no Instagram"],
+        ["instagram", "remover", "Remover Instagram simulado"], ["tiktok", "remover", "Remover TikTok simulado"]].forEach(function (b) {
+        simBtns.appendChild(el("button", { class: "btn ghost sm", type: "button", text: b[2], onclick: function () {
+          api("POST", "/admin/clients/" + id + "/sim-account", { platform: b[0], mode: b[1] }).then(function () { toast("Conta simulada atualizada."); loadClient(id); }).catch(fail);
         } }));
       });
     }
