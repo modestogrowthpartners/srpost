@@ -106,7 +106,8 @@ async function clientDetail(id: string) {
     db.from("creatives").select(`id, kind, format, media_url, thumb_url, media, title, caption, hashtags, platforms, location_id, location_name,
       audio_name, auto_music, ai_generated, suggested_at, status, decision_comment, decided_at, revision_of, source, created_at,
       posts ( id, platform, status, scheduled_for, published_at, permalink, attempts, last_error,
-        post_metrics ( views, reach, likes, comments, saved, shares, total_interactions, fetched_at ) )`)
+        post_metrics ( views, reach, likes, comments, saved, shares, total_interactions, fetched_at ),
+        post_attempts ( attempt, phase, outcome, error, error_code, created_at ) )`)
       .eq("client_id", id).order("created_at", { ascending: false }).limit(400),
   ]);
   const c = must(client) as any;
@@ -120,7 +121,10 @@ async function clientDetail(id: string) {
     links: must(links) ?? [],
     creatives: (must(creatives) ?? []).map((r: any) => {
       const list = (Array.isArray(r.posts) ? r.posts : r.posts ? [r.posts] : []) as any[];
-      const posts = list.map((p) => ({ ...p, post_metrics: undefined, metrics: one(p.post_metrics) }))
+      const posts = list.map((p) => ({
+        ...p, post_metrics: undefined, post_attempts: undefined, metrics: one(p.post_metrics),
+        history: [...((p.post_attempts ?? []) as any[])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
+      }))
         .sort((a, b) => String(a.platform).localeCompare(String(b.platform)));
       return { ...r, posts };
     }),

@@ -10,10 +10,12 @@ export const REQUIRED_PERMISSIONS = ["instagram_basic", "instagram_content_publi
 export const OPTIONAL_PERMISSIONS = ["instagram_manage_insights"];
 
 export class IgError extends Error {
-  constructor(message: string, public status: number, public code?: number, public subcode?: number) {
+  // `info` guarda o erro como a Meta devolveu (tipo, mensagem tecnica, fbtrace_id), para o historico de tentativas.
+  constructor(message: string, public status: number, public code?: number, public subcode?: number, public info: Record<string, unknown> = {}) {
     super(message);
   }
-  get tokenInvalid() { return this.code === 190; }
+  // 190: token invalido, expirado ou revogado. 102: sessao invalida.
+  get tokenInvalid() { return this.code === 190 || this.code === 102; }
 }
 
 async function parse(res: Response) {
@@ -23,7 +25,10 @@ async function parse(res: Response) {
   if (!res.ok || body?.error) {
     const e = body?.error ?? {};
     const msg = e.error_user_msg || e.message || text.slice(0, 300) || `HTTP ${res.status}`;
-    throw new IgError(String(msg), res.status, e.code, e.error_subcode);
+    throw new IgError(String(msg), res.status, e.code, e.error_subcode, {
+      http: res.status, type: e.type, message: e.message, user_title: e.error_user_title, user_msg: e.error_user_msg,
+      is_transient: e.is_transient, fbtrace_id: e.fbtrace_id,
+    });
   }
   return body;
 }

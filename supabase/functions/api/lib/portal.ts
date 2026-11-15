@@ -24,7 +24,7 @@ async function bootstrap(client: ClientRow) {
     db.from("agents").select("name, role_line, bio, tone, pillars, posts_per_week, post_times, platforms, status").eq("client_id", client.id).maybeSingle(),
     db.from("creatives").select(CREATIVE_FIELDS).eq("client_id", client.id).eq("status", "pending").order("suggested_at", { ascending: true, nullsFirst: false }).order("created_at").limit(100),
     db.from("creatives").select("status").eq("client_id", client.id).limit(5000),
-    db.from("posts").select("status").eq("client_id", client.id).limit(5000),
+    db.from("posts").select("status, platform").eq("client_id", client.id).limit(5000),
     accountsState(client.id),
   ]);
   const counts: Record<string, number> = { pending: 0, approved: 0, rejected: 0, adjust: 0, scheduled: 0, published: 0, failed: 0 };
@@ -33,6 +33,12 @@ async function bootstrap(client: ClientRow) {
     if (r.status === "scheduled" || r.status === "processing") counts.scheduled++;
     else if (r.status === "published") counts.published++;
     else if (r.status === "failed") counts.failed++;
+  }
+  // Posts aprovados que estao parados porque a conta da rede nao esta conectada (ou a conexao expirou).
+  const waiting: Record<string, number> = {};
+  for (const r of must(postsRes) ?? []) if (r.status === "scheduled") waiting[r.platform] = (waiting[r.platform] ?? 0) + 1;
+  for (const p of ["instagram", "tiktok"] as const) {
+    (accounts[p] as Record<string, unknown>).waiting = accounts[p].connected ? 0 : (waiting[p] ?? 0);
   }
   return json({
     client: { name: client.name, segment: client.segment, timezone: client.timezone, is_demo: client.is_demo },

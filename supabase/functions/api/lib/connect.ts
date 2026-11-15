@@ -52,7 +52,8 @@ export async function connectReturn(req: Request, state: string): Promise<Respon
     }, { onConflict: "client_id,platform" }).select("id").single()) as { id: string };
     await db.from("posts").update({ social_account_id: row.id })
       .eq("client_id", st.client_id).eq("platform", "tiktok").in("status", ["scheduled", "failed"]);
-    return backToPortal({ tt: "ok" });
+    const { data: moved } = await db.rpc("respread_overdue", { p_client_id: st.client_id, p_platform: "tiktok" });
+    return backToPortal(typeof moved === "number" && moved > 0 ? { tt: "ok", atrasados: String(moved) } : { tt: "ok" });
   } catch (e) {
     await note("return", e instanceof Error ? e.message : String(e));
     return backToPortal({ tt: "erro", motivo: "interno" });

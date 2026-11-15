@@ -131,6 +131,24 @@ curl -X POST "https://qmmhqhebxynycjxqxber.supabase.co/functions/v1/api/ingest/c
 - `external_ref` evita duplicar o mesmo criativo se o fluxo rodar duas vezes.
 - As mídias precisam ser https e continuar públicas até a publicação. Para hospedar no Supabase, peça uma URL de upload em `POST /ingest/upload-url` (`client_slug`, `filename`, `content_type`), envie o arquivo com `PUT` na `signed_url` e use o `path` retornado como `media_path`.
 
+## Tentativas de publicação e reconexão
+
+Cada tentativa de publicação fica registrada na tabela `post_attempts` (fase, resultado, código e mensagem como a rede devolveu) e aparece no painel do time, abaixo do post. O registro não é apagado quando o post sai, e as falhas também vão para o log da função (`publish_attempt`).
+
+Como o worker trata cada falha:
+
+| Situação | Tratamento |
+| --- | --- |
+| Token inválido, expirado ou revogado (Meta 190 ou 102) | A conta vira `expired`, o post volta para a fila sem gastar tentativa e sai depois da reconexão |
+| Suspeita de spam (4/2207051) ou limite de chamadas | Nova tentativa em 2 ciclos, até 5 tentativas |
+| Falha temporária da Meta ou de rede | Nova tentativa no ciclo seguinte, até 5 tentativas |
+| Limite diário de publicações (9/2207042) | Nova tentativa em 6 horas |
+| Conta do Instagram restrita (25/2207050) | Falha definitiva: o dono da conta precisa resolver no aplicativo |
+
+As novas tentativas são agendadas 20 segundos antes do ciclo desejado do cron (que roda a cada 5 minutos), para não perder a rodada por segundos.
+
+Reconexão: a cada 6 horas o worker confere se cada conexão continua válida. Quando a conta fica `expired`, o portal mostra um aviso fixo em todas as abas com o botão de reconectar, que leva direto ao login da rede. Os posts aprovados continuam agendados. No retorno do login, a função `respread_overdue` recoloca na fila os posts atrasados há mais de 30 minutos: o mais antigo sai no ciclo seguinte e os demais vão para os próximos horários livres do agente.
+
 ## Limites conhecidos
 
 - **Tamanho de arquivo:** 50 MB por mídia (limite do bucket, alinhado ao plano gratuito do Supabase). O Instagram aceita Reels de até 300 MB; para arquivos maiores é preciso plano pago ou hospedar a mídia fora.

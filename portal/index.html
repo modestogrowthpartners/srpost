@@ -61,6 +61,17 @@ img, video { display: block; max-width: 100%; }
 .tab[aria-selected="true"] { background: var(--ink); color: #FFF; }
 .badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--butter); color: var(--ink); font-family: var(--body); font-weight: 700; font-size: 0.72rem; line-height: 20px; text-align: center; }
 
+.alert { background: var(--error-soft); border-bottom: 1.5px solid var(--ink); font-size: 0.88rem; }
+.alert .wrap { display: grid; gap: 8px; padding-block: 10px; }
+.alert .line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.alert .line span { flex: 1 1 240px; min-width: 0; }
+@media (max-width: 859px) {
+  .alert { font-size: 0.78rem; line-height: 1.35; }
+  .alert .wrap { padding-block: 7px; gap: 6px; }
+  .alert .line { flex-wrap: nowrap; gap: 10px; }
+  .alert .line span { flex: 1 1 auto; }
+  .alert .btn.sm { min-height: 34px; padding: 0 12px; font-size: 0.76rem; flex: none; }
+}
 .demo { background: var(--butter-soft); border-bottom: 1.5px solid var(--ink); font-size: 0.74rem; padding-block: 3px; text-align: center; }
 
 /* Navegacao inferior (celular) */
@@ -283,6 +294,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   </div>
 </header>
 <div class="demo" id="demoBar" hidden>Demonstração com dados de exemplo</div>
+<div class="alert" id="alertBar" role="alert" hidden><div class="wrap" id="alertBody"></div></div>
 
 <main class="wrap" id="main">
   <section class="gate" id="gate">
@@ -447,7 +459,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   // ---------- entrada ----------
   function gate(title, text, withForm) {
     var g = $("gate"); g.hidden = false; g.textContent = "";
-    ["view-aprovar", "view-posts", "view-agente", "nav", "tabs", "demoBar"].forEach(function (id) { $(id).hidden = true; });
+    ["view-aprovar", "view-posts", "view-agente", "nav", "tabs", "demoBar", "alertBar"].forEach(function (id) { $(id).hidden = true; });
     g.appendChild(el("h1", { text: title }));
     g.appendChild(el("p", { text: text }));
     if (withForm) {
@@ -489,7 +501,12 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     show("agente");
     var net = ig ? "instagram" : "tiktok", acc = accounts()[net].account;
     if ((ig || tt) === "ok") {
-      var many = Number(q.get("contas")) > 1;
+      var many = Number(q.get("contas")) > 1, late = Number(q.get("atrasados")) || 0;
+      if (late && !many) {
+        toast(NET[net] + " reconectado. " + (late === 1 ? "O post que estava parado sai no próximo ciclo, em até 5 minutos."
+          : late + " posts que estavam parados voltaram para a fila: o primeiro sai em até 5 minutos e os demais nos próximos horários."), { ms: 14000 });
+        return;
+      }
       toast(many ? "Conectamos @" + ((acc && acc.username) || "sua conta") + ". Você liberou mais de uma conta: para usar outra, desconecte e refaça o login marcando só a conta desejada."
         : NET[net] + " conectado. Os posts aprovados já podem ir ao ar.", { ms: many ? 14000 : 6000 });
       return;
@@ -520,14 +537,50 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   }
   document.querySelectorAll("[data-view]").forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.view); }); });
 
-  function renderAll() { renderBadges(); renderNotice(); renderDeck(); renderAgent(); renderAccounts(); }
+  function renderAll() { renderBadges(); renderAlert(); renderNotice(); renderDeck(); renderAgent(); renderAccounts(); }
+  // Redes que precisam de acao do cliente: conexao expirada ou removida, ou posts aprovados parados sem conta.
+  function alerted() {
+    var acc = accounts();
+    return ["instagram", "tiktok"].filter(function (net) {
+      var st = acc[net];
+      if (!st || st.connected || !st.available) return false;
+      return (st.account && st.account.status === "expired") || (st.waiting || 0) > 0;
+    });
+  }
+  // Um clique leva direto para a tela de autorizacao da rede.
+  function startConnect(net, btn, short) {
+    var txt = btn.textContent;
+    btn.disabled = true; btn.textContent = short ? "Abrindo..." : CONNECT[net].opening;
+    api("POST", CONNECT[net].start).then(function (r) { location.href = r.authorize_url; })
+      .catch(function (e) { btn.disabled = false; btn.textContent = txt; toast(e.message, { bad: true }); });
+  }
+  // Aviso fixo no topo, em todas as abas, enquanto uma conta precisar ser reconectada.
+  function renderAlert() {
+    var bar = $("alertBar"), body = $("alertBody"), list = alerted(), acc = accounts();
+    body.textContent = ""; bar.hidden = !list.length;
+    list.forEach(function (net) {
+      var st = acc[net], expired = st.account && st.account.status === "expired", w = st.waiting || 0;
+      var text = expired ? "O " + NET[net] + (st.account.username ? " (@" + st.account.username + ")" : "") + " precisa ser reconectado"
+        : "O " + NET[net] + " não está conectado";
+      text += w ? ". " + (w === 1 ? "1 post aprovado está parado." : w + " posts aprovados estão parados.") : " para o agente voltar a publicar.";
+      var btn = el("button", { class: "btn sm", type: "button", text: mobile.matches ? (expired ? "Reconectar" : "Conectar") : (expired ? "Reconectar " : "Conectar ") + NET[net] });
+      btn.setAttribute("aria-label", (expired ? "Reconectar " : "Conectar ") + NET[net]);
+      btn.addEventListener("click", function () { startConnect(net, btn, mobile.matches); });
+      body.appendChild(el("div", { class: "line" }, el("span", { text: text }), btn));
+    });
+    fit();
+  }
+  function refreshAccounts() {
+    return api("GET", "/bootstrap").then(function (d) { S.data.accounts = d.accounts; S.data.instagram = d.instagram; S.data.counts = d.counts; renderAlert(); renderNotice(); renderAccounts(); }).catch(function () {});
+  }
   function renderBadges() {
     document.querySelectorAll("[data-badge]").forEach(function (b) { b.hidden = !S.queue.length; b.textContent = String(S.queue.length); });
   }
   function renderNotice() {
     var host = $("igNotice"); host.textContent = "";
-    var miss = missing(), acc = accounts();
-    $("igDot").hidden = !miss.length;
+    var acc = accounts(), shown = alerted();
+    $("igDot").hidden = !missing().length;
+    var miss = missing().filter(function (p) { return shown.indexOf(p) < 0; });
     if (!miss.length) return;
     var expired = miss.some(function (p) { return acc[p] && acc[p].account && acc[p].account.status === "expired"; });
     host.appendChild(el("div", { class: "notice" + (expired ? " warn" : "") },
@@ -710,7 +763,12 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
       S.queue.shift(); S.busy = false; renderDeck();
       req.then(function (res) {
         S.libraryStale = true;
-        if (action === "approve") S.data.counts.scheduled++;
+        if (action === "approve") {
+          S.data.counts.scheduled++;
+          var acc = accounts();
+          (res.platforms || []).forEach(function (p) { if (acc[p] && !acc[p].connected) acc[p].waiting = (acc[p].waiting || 0) + 1; });
+          renderAlert(); renderNotice();
+        }
         var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + "."
           : action === "reject" ? "Reprovado. O agente não publica este." : "Pedido de ajuste enviado ao agente.";
         toast(msg, { action: "Desfazer", onAction: function () { undo(c); } });
@@ -729,7 +787,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     api("POST", "/undo", { creative_id: c.id }).then(function (res) {
       S.queue.unshift(res.creative || c);
       if (S.queue.length > S.total) S.total = S.queue.length;
-      S.libraryStale = true; renderDeck();
+      S.libraryStale = true; renderDeck(); refreshAccounts();
       if (fromLibrary) { loadLibrary(); toast("Voltou para a fila de aprovação."); }
       else toast("Desfeito. O criativo voltou para a fila.", { ms: 3000 });
     }).catch(function (e) { toast(e.message, { bad: true }); if (fromLibrary) { S.libraryStale = true; loadLibrary(); } });
@@ -995,7 +1053,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
             var off = { available: st.available, connected: false, account: null };
             if (S.data.accounts) S.data.accounts[net] = off;
             if (net === "instagram") S.data.instagram = off;
-            S.libraryStale = true; renderNotice(); renderAccounts(); toast(NET[net] + " desconectado.");
+            S.libraryStale = true; renderAccounts(); refreshAccounts(); toast(NET[net] + " desconectado.");
           }).catch(function (e) { toast(e.message, { bad: true }); });
         } }));
         bar.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Cancelar", onclick: renderAccounts }));
@@ -1007,14 +1065,10 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     head.appendChild(el("h3", { text: NET[net] }));
     head.appendChild(el("span", { class: "pill" + (expired ? " no" : ""), style: "margin-left:auto", text: expired ? "Reconectar" : "Não conectado" }));
     box.appendChild(head);
-    box.appendChild(el("p", { style: "font-size:0.9rem", text: expired ? "A conexão com @" + (acc.username || "sua conta") + " precisa ser refeita para o agente voltar a publicar." : cfg.intro }));
+    box.appendChild(el("p", { style: "font-size:0.9rem", text: expired ? "A conexão com @" + (acc.username || "sua conta") + " expirou ou foi removida. Reconecte para o agente voltar a publicar: os posts aprovados continuam guardados e saem depois da reconexão." : cfg.intro }));
     if (st.available) {
       var txt = (expired ? "Reconectar " : "Conectar ") + NET[net];
-      var btn = el("button", { class: "btn", type: "button", text: txt, style: "justify-self:start", onclick: function () {
-        btn.disabled = true; btn.textContent = cfg.opening;
-        api("POST", cfg.start).then(function (r) { location.href = r.authorize_url; })
-          .catch(function (e) { btn.disabled = false; btn.textContent = txt; toast(e.message, { bad: true }); });
-      } });
+      var btn = el("button", { class: "btn", type: "button", text: txt, style: "justify-self:start", onclick: function () { startConnect(net, btn); } });
       box.appendChild(btn);
     } else box.appendChild(el("div", { class: "notice" }, el("span", { text: cfg.pending })));
     var req = el("ul", { style: "display:grid;gap:4px;font-size:0.82rem;color:var(--muted)" });

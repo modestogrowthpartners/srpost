@@ -1,19 +1,21 @@
 // Worker (chamado a cada 5 min pelo pg_cron): publica posts vencidos pelo adaptador de cada conta,
-// acompanha os jobs, cuida das conexoes e atualiza metricas.
+// acompanha os jobs, cuida das conexoes e atualiza metricas. Cada tentativa fica registrada em post_attempts.
 import { db, must, one } from "./core.ts";
 import * as ig from "./instagram.ts";
 import * as up from "./uploadpost.ts";
-import { AccountRow, adapterFor, CreativeRow, PublishJob, ReconnectError } from "./publishers.ts";
+import { AccountRow, adapterFor, classifyError, CreativeRow, Failure, PublishJob, ReconnectError } from "./publishers.ts";
 
 type Summary = Record<string, number | string[]>;
 const ACCOUNT_FIELDS = "id, client_id, platform, provider, provider_ref, external_id, status, token_issued_at, token_expires_at, updated_at";
 const CREATIVE_FIELDS = "kind, format, media_url, media, title, caption, hashtags, ai_generated, location_id, audio_name, auto_music";
+const TICK_MS = 5 * 60_000;
+const VALIDATE_EVERY_MS = 6 * 3_600_000;
 
 const tokens = new Map<string, string>();
 async function tokenFor(accountId: string): Promise<string> {
   if (tokens.has(accountId)) return tokens.get(accountId)!;
   const { data, error } = await db.rpc("ig_token_read", { p_account_id: accountId });
-  if (error || !data) throw new ReconnectError("Token da conta indisponível.");
+  if (error || !data) throw new ReconnectError("Token da conta indisponível.", "token_ausente");
   tokens.set(accountId, data as string);
   return data as string;
 }
@@ -31,31 +33,55 @@ async function jobFor(post: any, account: AccountRow): Promise<PublishJob> {
   return { creative: c as CreativeRow, account, token: adapter.needsToken ? await tokenFor(account.id) : null };
 }
 
-async function markExpired(accountId: string, reason: string) {
-  await db.from("social_accounts").update({ status: "expired", last_error: reason.slice(0, 300), updated_at: new Date().toISOString() }).eq("id", accountId);
+// A conta deixa de publicar ate o cliente reconectar pelo portal. Os posts agendados ficam preservados.
+async function markExpired(account: { id: string; platform: string }, reason: string) {
+  console.error(JSON.stringify({ event: "account_expired", account_id: account.id, platform: account.platform, reason }));
+  await db.from("social_accounts").update({ status: "expired", last_error: reason.slice(0, 300), updated_at: new Date().toISOString() }).eq("id", account.id);
 }
 
-async function failOrRetry(post: any, message: string) {
-  const final = (post.attempts ?? 0) >= 3;
-  await db.from("posts").update({
-    status: final ? "failed" : "scheduled", container_id: null, container_created_at: null,
-    last_error: message.slice(0, 500),
-    scheduled_for: final ? post.scheduled_for : new Date(Date.now() + 10 * 60_000).toISOString(),
-  }).eq("id", post.id);
+// O cron roda nos minutos multiplos de 5. Mira 20 s antes do ciclo desejado para a nova tentativa
+// nao perder a rodada por segundos e so sair no ciclo seguinte.
+function retryAt(ticks: number): string {
+  return new Date(Math.floor(Date.now() / TICK_MS) * TICK_MS + ticks * TICK_MS - 20_000).toISOString();
 }
 
-async function handleError(post: any, account: AccountRow | null, e: unknown) {
-  const msg = e instanceof Error ? e.message : String(e);
-  if (e instanceof ReconnectError && account) {
-    await markExpired(account.id, msg);
+// Historico: uma linha por tentativa, com o erro como a rede devolveu. Falhas tambem vao para o log da funcao.
+async function logAttempt(post: any, phase: "start" | "publish", outcome: "ok" | "retry" | "failed" | "reconnect", f?: Failure) {
+  if (f) {
+    console.error(JSON.stringify({
+      event: "publish_attempt", post_id: post.id, platform: post.platform, attempt: post.attempts ?? 0,
+      phase, outcome, code: f.code, error: f.message, detail: f.detail,
+    }));
+  }
+  await db.from("post_attempts").insert({
+    post_id: post.id, attempt: post.attempts ?? 0, phase, outcome,
+    error: f ? f.message.slice(0, 1000) : null, error_code: f?.code ?? null, detail: f?.detail ?? null,
+  });
+}
+
+async function handleFailure(post: any, account: AccountRow | null, phase: "start" | "publish", f: Failure, sum: Summary) {
+  (sum.errors as string[]).push(`${phase} ${post.platform} ${post.id} [${f.code ?? "sem codigo"}]: ${f.message}`);
+  if (f.kind === "reconnect") {
+    // Sem conta conectada (por exemplo, a conexao caiu em outro post do mesmo ciclo) nao ha o que marcar.
+    if (account) await markExpired(account, f.message);
+    // Volta para a fila sem gastar tentativa: sai assim que o cliente reconectar.
     await db.from("posts").update({
       status: "scheduled", container_id: null, container_created_at: null,
       attempts: Math.max(0, (post.attempts ?? 1) - 1), last_error: "Reconecte a conta para publicar.",
     }).eq("id", post.id);
+    await logAttempt(post, phase, "reconnect", f);
     return;
   }
-  await failOrRetry(post, msg);
+  const final = f.kind !== "retry" || (post.attempts ?? 0) >= f.maxAttempts;
+  await db.from("posts").update({
+    status: final ? "failed" : "scheduled", container_id: null, container_created_at: null,
+    last_error: f.message.slice(0, 500),
+    scheduled_for: final ? post.scheduled_for : retryAt(f.ticks),
+  }).eq("id", post.id);
+  await logAttempt(post, phase, final ? "failed" : "retry", f);
 }
+
+const plainFailure = (code: string, message: string): Failure => ({ kind: "retry", ticks: 2, maxAttempts: 3, code, message, detail: {} });
 
 async function startJobs(sum: Summary) {
   // Posts que ficaram em processing sem job (execucao anterior interrompida) voltam para a fila.
@@ -64,16 +90,15 @@ async function startJobs(sum: Summary) {
   for (const post of claimed) {
     const account = await accountOf(post.client_id, post.platform);
     try {
-      if (!account) throw new Error("Conta não conectada.");
+      if (!account) throw new ReconnectError("Conta não conectada.", "sem_conta");
       const job = await jobFor(post, account);
       const ref = await adapterFor(account).start(job);
       await db.from("posts").update({
-        container_id: ref, container_created_at: new Date().toISOString(), social_account_id: account.id, last_error: null,
+        container_id: ref, container_created_at: new Date().toISOString(), social_account_id: account.id,
       }).eq("id", post.id);
       sum.started = (sum.started as number) + 1;
     } catch (e) {
-      (sum.errors as string[]).push(`start ${post.platform} ${post.id}: ${e instanceof Error ? e.message : e}`);
-      await handleError(post, account, e);
+      await handleFailure(post, account, "start", classifyError(e), sum);
     }
   }
 }
@@ -83,22 +108,22 @@ async function finishJobs(sum: Summary) {
   for (const post of posts ?? []) {
     const account = await accountOf(post.client_id, post.platform);
     try {
-      if (!account) throw new Error("Conta não conectada.");
+      if (!account) throw new ReconnectError("Conta não conectada.", "sem_conta");
       const adapter = adapterFor(account);
       const res = await adapter.poll(await jobFor(post, account), post.container_id);
       if (res.state === "pending") {
         const age = Date.now() - new Date(post.container_created_at ?? post.created_at).getTime();
-        if (age > adapter.timeoutMs) await failOrRetry(post, "A rede demorou demais para processar a mídia.");
+        if (age > adapter.timeoutMs) await handleFailure(post, account, "publish", plainFailure("timeout", "A rede demorou demais para processar a mídia."), sum);
         continue;
       }
-      if (res.state === "failed") { await failOrRetry(post, res.error); continue; }
+      if (res.state === "failed") { await handleFailure(post, account, "publish", plainFailure("recusado", res.error), sum); continue; }
       await db.from("posts").update({
-        status: "published", media_id: res.mediaId, permalink: res.permalink, published_at: new Date().toISOString(), last_error: null,
+        status: "published", media_id: res.mediaId, permalink: res.permalink, published_at: new Date().toISOString(),
       }).eq("id", post.id);
+      await logAttempt(post, "publish", "ok");
       sum.published = (sum.published as number) + 1;
     } catch (e) {
-      (sum.errors as string[]).push(`publish ${post.platform} ${post.id}: ${e instanceof Error ? e.message : e}`);
-      await handleError(post, account, e);
+      await handleFailure(post, account, "publish", classifyError(e), sum);
     }
   }
 }
@@ -107,21 +132,22 @@ async function maintainAccounts(sum: Summary) {
   const now = Date.now();
   const { data: accounts } = await db.from("social_accounts").select(ACCOUNT_FIELDS).eq("status", "connected").limit(300);
   for (const a of (accounts ?? []) as AccountRow[]) {
-    const stale = now - new Date(a.updated_at).getTime() > 24 * 3_600_000;
+    // A cada 6 horas confere se a conexao continua valida, para avisar o cliente antes do proximo post.
+    const stale = now - new Date(a.updated_at).getTime() > VALIDATE_EVERY_MS;
     try {
       if (a.provider === "uploadpost") {
         if (!stale || !a.provider_ref) continue;
         const acc = await up.connectedAccount(a.provider_ref, a.platform);
-        if (!acc || acc.reauthRequired) { await markExpired(a.id, "A conexão com o TikTok precisa ser refeita."); continue; }
+        if (!acc || acc.reauthRequired) { await markExpired(a, "A conexão com o TikTok precisa ser refeita."); continue; }
         await db.from("social_accounts").update({
           username: acc.handle ?? undefined, name: acc.displayName ?? undefined,
           profile_picture_url: acc.image ?? undefined, updated_at: new Date().toISOString(),
         }).eq("id", a.id);
         continue;
       }
-      const exp = a.token_expires_at ? new Date(a.token_expires_at).getTime() : 0; // 0 = token de Pagina sem validade
+      const exp = a.token_expires_at ? new Date(a.token_expires_at).getTime() : 0; // 0 = token sem validade
       const issued = a.token_issued_at ? new Date(a.token_issued_at).getTime() : 0;
-      if (exp && exp < now) { await markExpired(a.id, "Token expirado."); continue; }
+      if (exp && exp < now) { await markExpired(a, "Token expirado."); continue; }
       let token = await tokenFor(a.id);
       const appId = Deno.env.get("IG_APP_ID"), secret = Deno.env.get("IG_APP_SECRET");
       if (exp && appId && secret && exp - now < 10 * 86_400_000 && now - issued > 24 * 3_600_000) {
@@ -144,8 +170,10 @@ async function maintainAccounts(sum: Summary) {
         }).eq("id", a.id);
       }
     } catch (e) {
-      (sum.errors as string[]).push(`account ${a.platform} ${a.id}: ${e instanceof Error ? e.message : e}`);
-      if (e instanceof ReconnectError || (e instanceof ig.IgError && e.tokenInvalid)) await markExpired(a.id, (e as Error).message);
+      const msg = e instanceof Error ? e.message : String(e);
+      (sum.errors as string[]).push(`account ${a.platform} ${a.id}: ${msg}`);
+      if (e instanceof ReconnectError || (e instanceof ig.IgError && e.tokenInvalid)) await markExpired(a, msg);
+      else console.error(JSON.stringify({ event: "account_check_failed", account_id: a.id, platform: a.platform, error: msg }));
     }
   }
 }
@@ -179,8 +207,10 @@ async function syncMetrics(sum: Summary) {
       }));
       sum.metrics = (sum.metrics as number) + 1;
     } catch (e) {
-      (sum.errors as string[]).push(`metrics ${p.platform} ${p.id}: ${e instanceof Error ? e.message : e}`);
-      if (e instanceof ReconnectError) await markExpired(account.id, e.message);
+      const msg = e instanceof Error ? e.message : String(e);
+      (sum.errors as string[]).push(`metrics ${p.platform} ${p.id}: ${msg}`);
+      console.error(JSON.stringify({ event: "metrics_failed", post_id: p.id, platform: p.platform, error: msg }));
+      if (e instanceof ReconnectError) await markExpired(account, msg);
     }
   }
 }

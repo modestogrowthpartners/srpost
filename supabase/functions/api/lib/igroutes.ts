@@ -65,7 +65,12 @@ async function callback(req: Request): Promise<Response> {
     must(await db.rpc("ig_token_store", { p_account_id: acc.id, p_token: token }));
     await db.from("posts").update({ social_account_id: acc.id })
       .eq("client_id", st.client_id).eq("platform", "instagram").in("status", ["scheduled", "failed"]);
-    return back(accounts.length > 1 ? { ig: "ok", contas: String(accounts.length) } : { ig: "ok" });
+    // Reconexao: os posts que ficaram parados voltam para a fila, redistribuidos para nao sairem todos de uma vez.
+    const { data: moved } = await db.rpc("respread_overdue", { p_client_id: st.client_id, p_platform: "instagram" });
+    const params: Record<string, string> = { ig: "ok" };
+    if (accounts.length > 1) params.contas = String(accounts.length);
+    if (typeof moved === "number" && moved > 0) params.atrasados = String(moved);
+    return back(params);
   } catch (e) {
     await note("excecao", e instanceof Error ? e.message : String(e));
     return back({ ig: "erro", motivo: e instanceof ig.IgError ? "instagram" : "interno" });

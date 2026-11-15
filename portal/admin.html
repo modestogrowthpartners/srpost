@@ -250,10 +250,21 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     return el("div", { class: "meta" }, el("b", { style: "color:var(--ink)", text: NET[p.platform] || p.platform }), el("span", { class: st[1], text: st[0] }),
       p.permalink ? el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "abrir" }) : null,
       m ? el("span", { text: n(m.views) + " views · " + n(m.likes) + " curtidas · " + n(m.comments) + " coment. · " + n(m.shares) + " compart." }) : null,
-      p.last_error ? el("span", { style: "color:var(--error)", text: p.last_error }) : null,
+      p.last_error && p.status !== "published" && !(p.history || []).length ? el("span", { style: "color:var(--error)", text: p.last_error }) : null,
       p.status === "failed" ? el("button", { class: "btn sm", type: "button", text: "Tentar de novo", onclick: function () { api("POST", "/admin/posts/" + p.id + "/retry").then(function () { toast("Reenviado."); loadClient(currentClient); }).catch(fail); } }) : null);
   }
   var currentClient = null;
+  // Historico de tentativas de publicacao: nada e apagado, nem depois que o post sai.
+  var OUTCOME = { ok: "publicado", retry: "falhou, nova tentativa agendada", failed: "falhou, sem novas tentativas", reconnect: "conta precisa ser reconectada" };
+  function historyBox(p) {
+    var h = p.history || [];
+    if (!h.length || (h.length === 1 && h[0].outcome === "ok")) return null;
+    var box = el("div", { class: "note", style: "display:grid;gap:3px" });
+    h.forEach(function (a) {
+      box.appendChild(el("span", { text: "Tentativa " + a.attempt + " · " + date(a.created_at) + " · " + (OUTCOME[a.outcome] || a.outcome) + (a.error_code ? " · código " + a.error_code : "") + (a.error ? " · " + a.error : "") }));
+    });
+    return box;
+  }
   function renderClient(d) {
     var c = d.client, id = c.id; app.textContent = ""; currentClient = id;
     var accts = c.accounts || (c.instagram ? [Object.assign({ platform: "instagram" }, c.instagram)] : []);
@@ -387,7 +398,7 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
           cr.suggested_at && cr.status === "pending" ? el("span", { text: "sugerido " + date(cr.suggested_at) }) : null,
           cr.location_name ? el("span", { text: "local: " + cr.location_name }) : null, cr.ai_generated ? el("span", { text: "IA" }) : null));
       if (cr.decision_comment) body.appendChild(el("p", { class: "note", text: "Cliente: " + cr.decision_comment }));
-      ps.forEach(function (p) { body.appendChild(postLine(p)); });
+      ps.forEach(function (p) { body.appendChild(postLine(p)); var h = historyBox(p); if (h) body.appendChild(h); });
       var acts = el("div", { class: "side" });
       acts.appendChild(el("a", { class: "btn ghost sm", href: cr.media_url, target: "_blank", rel: "noopener", text: "Abrir mídia" }));
       if (cr.status === "adjust" || cr.status === "rejected") {

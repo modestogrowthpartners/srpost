@@ -29,8 +29,45 @@ export type Metrics = {
   total_interactions?: number; avg_watch_time_ms?: number;
 };
 
-// A conta precisa ser reconectada pelo cliente (token invalido ou acesso revogado).
-export class ReconnectError extends Error {}
+// A conta precisa ser reconectada pelo cliente (token invalido, expirado ou acesso revogado).
+export class ReconnectError extends Error {
+  constructor(message: string, public code: string | null = null, public detail: Record<string, unknown> = {}) { super(message); }
+}
+
+// Como o worker deve tratar uma falha: reconectar, tentar de novo (em quantos ciclos e ate quantas vezes) ou desistir.
+export type Failure = {
+  kind: "reconnect" | "retry" | "fatal"; ticks: number; maxAttempts: number;
+  code: string | null; message: string; detail: Record<string, unknown>;
+};
+
+const META_TRANSIENT_SUBCODES = [2207001, 2207003, 2207020, 2207027, 2207032, 2207053];
+const META_THROTTLE_CODES = [4, 17, 32, 368, 613];
+
+// Classifica o erro pela documentacao de codigos da API de publicacao do Instagram.
+export function classifyError(e: unknown): Failure {
+  const message = e instanceof Error ? e.message : String(e);
+  if (e instanceof ReconnectError) return { kind: "reconnect", ticks: 0, maxAttempts: 0, code: e.code, message, detail: e.detail };
+  if (e instanceof ig.IgError) {
+    const code = [e.code, e.subcode].filter((v) => v !== undefined && v !== null).join("/") || `http/${e.status}`;
+    const f = (kind: Failure["kind"], ticks: number, maxAttempts: number, classe: string): Failure =>
+      ({ kind, ticks, maxAttempts, code, message, detail: { ...e.info, classe } });
+    if (e.subcode === 2207050 || e.code === 25) return f("fatal", 0, 0, "conta do Instagram restrita: o dono precisa resolver no aplicativo");
+    if (e.subcode === 2207042 || e.code === 9) return f("retry", 72, 6, "limite diario de publicacoes pela API");
+    if (e.subcode === 2207051) return f("retry", 2, 5, "suspeita de spam (Meta)");
+    if (META_THROTTLE_CODES.includes(e.code ?? 0) || e.status === 429) return f("retry", 2, 5, "limite de chamadas");
+    if (e.info.is_transient === true || e.status >= 500 || [-2, -1, 1, 2, 9007].includes(e.code ?? 0) || META_TRANSIENT_SUBCODES.includes(e.subcode ?? 0)) {
+      return f("retry", 1, 5, "falha temporaria da Meta");
+    }
+    return f("retry", 2, 3, "erro da Meta");
+  }
+  if (e instanceof up.UploadPostError) {
+    const code = `uploadpost/${e.status}${e.code ? "/" + e.code : ""}`;
+    const soon = e.status === 429 || e.status >= 500;
+    return { kind: "retry", ticks: soon ? 1 : 2, maxAttempts: soon ? 5 : 3, code, message, detail: { http: e.status, classe: soon ? "falha temporaria do provedor" : "erro do provedor" } };
+  }
+  if (e instanceof TypeError) return { kind: "retry", ticks: 1, maxAttempts: 5, code: "network", message, detail: { classe: "falha de rede" } };
+  return { kind: "retry", ticks: 2, maxAttempts: 3, code: null, message, detail: {} };
+}
 
 export interface PublisherAdapter {
   readonly provider: string;
@@ -49,7 +86,9 @@ const fullCaption = (c: CreativeRow) => [c.caption, c.hashtags].filter(Boolean).
 
 async function guardMeta<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); } catch (e) {
-    if (e instanceof ig.IgError && e.tokenInvalid) throw new ReconnectError(e.message);
+    if (e instanceof ig.IgError && e.tokenInvalid) {
+      throw new ReconnectError(e.message, [e.code, e.subcode].filter((v) => v !== undefined && v !== null).join("/"), { ...e.info, classe: "token invalido, expirado ou revogado" });
+    }
     throw e;
   }
 }
@@ -88,7 +127,7 @@ const metaInstagram: PublisherAdapter = {
 // Erro do provedor que indica conexao perdida do cliente (401 e chave do provedor invalida: configuracao, nao cliente).
 function guardProvider(e: unknown): never {
   if (e instanceof up.UploadPostError && e.status !== 401 && /reauth|reconnect|not connected|no connected/i.test(e.message)) {
-    throw new ReconnectError(e.message);
+    throw new ReconnectError(e.message, `uploadpost/${e.status}`, { http: e.status, classe: "conexao do provedor precisa ser refeita" });
   }
   throw e;
 }
