@@ -19,10 +19,10 @@ Documentos relacionados: [App Review da Meta](APP-REVIEW.md) e [TikTok: caminho 
 ## Como funciona
 
 1. O time cadastra o cliente e o agente no painel e gera um **link de acesso**. O link abre o portal sem senha. O token fica só no aparelho do cliente; no banco fica apenas o hash.
-2. Os criativos entram na fila pelo painel (upload) ou pela API de ingestão (n8n, agente gerador).
-3. O cliente decide cada criativo. Aprovado vira um post agendado **por rede de destino** (Instagram, TikTok ou os dois): na data sugerida ou, se não houver, no próximo horário livre do agente.
-4. A cada 5 minutos o publicador (pg_cron chamando `/worker/tick`) publica os posts vencidos pelo adaptador de cada conta, cuida das conexões e atualiza métricas.
-5. O cliente vê na aba Posts o que foi agendado, publicado, o que está em ajuste e os números de cada post, separados por rede.
+2. Os criativos entram na fila pelo painel (upload) ou pela entrada do agente (API de ingestão, com chave por cliente: ver `docs/AGENTE.md`). Cada criativo já chega com legenda, hashtags, link e opções.
+3. O cliente decide cada criativo, um por um. Antes de aprovar, ele vê e pode mudar as quatro opções do post (story, legenda, música e local). Aprovado vira um post agendado **por rede de destino** (Instagram, TikTok ou os dois), mais um story quando a opção está ligada: na data sugerida ou, se não houver, no próximo horário livre do agente.
+4. A cada minuto o publicador (pg_cron chamando `/worker/tick`) publica os posts vencidos pelo adaptador de cada conta, respeitando o ritmo por conta, cuida das conexões e atualiza métricas.
+5. O cliente acompanha na aba Posts, em **Andamento**: na fila, enviando, publicado ou falhou (com o motivo e o botão de tentar de novo) e a lista dos próximos posts com data e hora. A tela atualiza sozinha. Abaixo ficam os resultados de cada post, separados por rede.
 
 ## Conector multi-cliente
 
@@ -32,6 +32,21 @@ Cada cliente conecta as próprias contas na aba Agente > Contas conectadas. A pu
 | --- | --- | --- | --- |
 | Instagram | `meta` (API oficial) | Facebook Login for Business | Token da Página, criptografado no Vault |
 | TikTok | `uploadpost` (provedor) | Tela de autorização do TikTok, via provedor | Fica no provedor |
+
+## Opções por criativo
+
+As regras ficam em um único lugar (`lib/options.ts`) e valem para o portal, o painel, a ingestão e a publicação. Onde a API da rede não aceita, a opção aparece travada, com o motivo.
+
+| Opção | Instagram | TikTok |
+| --- | --- | --- |
+| Subir também no story | Sim. Vira uma publicação extra, depois do post principal, sem legenda, link, local e figurinhas. No carrossel, leva a primeira imagem | Travada: não há story pela API |
+| Com legenda | Sim no feed e no Reel (legenda, link e hashtags). Travada em story: a API não aceita legenda em story | Sim |
+| Com música | Travada: a API não escolhe música da biblioteca | Sim em post de foto ou carrossel (música automática do provedor). Travada em vídeo |
+| Com localização | Sim no feed e no Reel, quando o criativo tem `location_id`. Travada em story | Travada: exige ID de local do TikTok e um seletor que o Sr. Post ainda não tem |
+
+O link do criativo vai no fim da legenda, como texto. Com a legenda desligada, o link também não vai.
+
+Por dentro, o story extra é um criativo filho (`creatives.story_of`) criado na aprovação. Ele some junto se o cliente desfizer a aprovação.
 
 ## Formatos e recursos
 
@@ -140,14 +155,41 @@ Como o worker trata cada falha:
 | Situação | Tratamento |
 | --- | --- |
 | Token inválido, expirado ou revogado (Meta 190 ou 102) | A conta vira `expired`, o post volta para a fila sem gastar tentativa e sai depois da reconexão |
-| Suspeita de spam (4/2207051) ou limite de chamadas | Nova tentativa em 2 ciclos, até 5 tentativas |
-| Falha temporária da Meta ou de rede | Nova tentativa no ciclo seguinte, até 5 tentativas |
+| Suspeita de spam (4/2207051) ou bloqueio temporário (368) | A conta inteira entra em pausa (1 hora, dobrando a cada recusa, até 24 horas). Nova tentativa no fim da pausa, até 4 tentativas |
+| Limite de chamadas | Nova tentativa em 15 minutos, até 5 tentativas |
+| Limite de publicações informado pela Meta atingido | Espera 1 hora sem gastar tentativa |
+| Falha temporária da Meta ou de rede | Nova tentativa em 2 minutos, até 5 tentativas |
 | Limite diário de publicações (9/2207042) | Nova tentativa em 6 horas |
 | Conta do Instagram restrita (25/2207050) | Falha definitiva: o dono da conta precisa resolver no aplicativo |
 
-As novas tentativas são agendadas 20 segundos antes do ciclo desejado do cron (que roda a cada 5 minutos), para não perder a rodada por segundos.
+As novas tentativas são agendadas 5 segundos antes do ciclo desejado do cron (que roda a cada minuto), para não perder a rodada por segundos. Uma trava no banco impede duas execuções do publicador ao mesmo tempo.
 
 Reconexão: a cada 6 horas o worker confere se cada conexão continua válida. Quando a conta fica `expired`, o portal mostra um aviso fixo em todas as abas com o botão de reconectar, que leva direto ao login da rede. Os posts aprovados continuam agendados. No retorno do login, a função `respread_overdue` recoloca na fila os posts atrasados há mais de 30 minutos: o mais antigo sai no ciclo seguinte e os demais vão para os próximos horários livres do agente.
+
+## Ritmo de publicação por conta
+
+Para não disparar o filtro de spam das redes, o publicador segue estas regras, sempre por conta:
+
+| Regra | Valor | Origem |
+| --- | --- | --- |
+| Posts por conta a cada ciclo | 1 | Regra do Sr. Post |
+| Intervalo mínimo entre publicações da mesma conta | 15 minutos (ajustável em Configuração) | Regra do Sr. Post. A Meta não documenta um intervalo |
+| Teto de publicações por conta em 24 horas | 12 (ajustável, até 50) | Regra do Sr. Post |
+| Limite da Meta | O que a API informar para a conta (em 15/11/2026 devolveu 100 em 24 horas para a conta conectada; a documentação cita 50 em um trecho e 100 em outro) | O publicador consulta `content_publishing_limit` antes de cada publicação e espera se o limite foi atingido |
+| Pausa após suspeita de spam (4/2207051) ou bloqueio temporário (368) | 1 hora, dobrando a cada nova recusa, até 24 horas. Vale para a conta inteira | Regra do Sr. Post |
+
+O horário em que a conta pode publicar de novo é calculado no banco (`account_next_allowed`) e usado tanto pelo publicador quanto pela previsão mostrada ao cliente em Andamento. O ritmo não evita que a Meta recuse um post: ele reduz a chance e evita insistir depois de uma recusa.
+
+## Isolamento entre clientes
+
+- Portal: o link mágico identifica o cliente e toda consulta filtra por ele.
+- Entrada do agente: a chave por cliente só envia para a fila daquele cliente.
+- Publicação: a conta usada é sempre a do cliente dono do post, e fica registrada em cada tentativa (`post_attempts.detail.conta`).
+- Banco: chaves estrangeiras compostas impedem que um post aponte para criativo ou conta de outro cliente.
+
+## Cliente de demonstração e conta simulada
+
+Clientes marcados como demonstração podem usar uma **conta simulada** (painel, bloco Ritmo de publicação). Ela percorre o fluxo inteiro (fila, envio, publicado ou falha) sem chamar nenhuma rede. Serve para demonstrar o produto e para testar. Contas simuladas não existem em clientes reais: o banco recusa.
 
 ## Limites conhecidos
 
@@ -155,7 +197,7 @@ Reconexão: a cada 6 horas o worker confere se cada conexão continua válida. Q
 - **Formato:** Reels em MP4 ou MOV com H.264 e áudio AAC. Imagens do feed em JPEG, proporção entre 4:5 e 1,91:1 (o painel converte para JPEG, mas não recorta).
 - **Carrossel:** até 10 mídias. A API da Meta aceita até 20, mas mantive 10 por segurança. No Instagram todas seguem a proporção da primeira.
 - **TikTok:** depende da chave do provedor (`UPLOAD_POST_API_KEY`) e a conta do cliente precisa estar pública. Fotos em JPG ou WEBP.
-- **Limite do Instagram:** a documentação da Meta cita 100 posts publicados por API a cada 24 horas por conta (um trecho antigo ainda cita 50).
+- **Limite do Instagram:** a referência de `content_publishing_limit` cita 50 publicações por conta a cada 24 horas e o guia de publicação cita 100. Na consulta real de 15/11/2026 a API devolveu 100 para a conta conectada. O publicador usa sempre o número que a API devolve.
 - Métricas chegam cerca de 1 hora após a publicação e são atualizadas a cada hora nos 3 primeiros dias, depois a cada 12 horas.
 
 ## Publicar alterações

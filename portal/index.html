@@ -144,6 +144,49 @@ main { padding-block: 12px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom
 .copy .facts2 { display: grid; gap: 2px; padding-top: 8px; border-top: 1.5px solid var(--soft); font-size: 0.82rem; color: var(--muted); }
 .copy .facts2 b { color: var(--ink); }
 .keys { display: none; font-size: 0.78rem; color: var(--muted); }
+/* Opcoes do post: story, legenda, musica e local */
+.opts { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.opt { display: grid; justify-items: center; gap: 3px; min-height: 44px; padding: 5px 4px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--card); color: var(--ink); font-family: var(--display); font-weight: 600; font-size: 0.74rem; line-height: 1.1; text-align: center; }
+.opt .sw { position: relative; width: 30px; height: 16px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--card); flex: none; }
+.opt .sw::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); transition: transform 0.12s ease; }
+.opt[aria-checked="true"] { background: var(--sky); }
+.opt[aria-checked="true"] .sw { background: var(--approve); }
+.opt[aria-checked="true"] .sw::after { background: #FFF; transform: translateX(14px); }
+.opt.locked { border-style: dashed; border-color: var(--line); color: var(--muted); background: transparent; }
+.opt.locked .sw { border-color: var(--line); }
+.opt.locked .sw::after { background: var(--line); }
+.opt.locked[aria-checked="true"] .sw { background: var(--muted); border-color: var(--muted); }
+.opt small { display: none; font-family: var(--body, inherit); font-weight: 400; font-size: 0.78rem; line-height: 1.35; color: var(--muted); text-align: left; }
+.optnotes { display: grid; gap: 4px; padding-top: 8px; border-top: 1.5px solid var(--soft); font-size: 0.8rem; color: var(--muted); }
+.optnotes b { color: var(--ink); }
+.copy .linkline { font-size: 0.85rem; overflow-wrap: anywhere; }
+.copy .linkline a { color: var(--blue); }
+.copy p.offcap { color: var(--muted); text-decoration: line-through; }
+/* Andamento */
+.track { margin-bottom: 20px; }
+.trackhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.trackhead h2 { font-size: 1.2rem; }
+.trackhead .live { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); }
+.trackhead .live i { width: 8px; height: 8px; border-radius: 50%; background: #2E9E5B; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+.tgroup { display: grid; gap: 8px; margin-bottom: 14px; }
+.tgroup > .label { margin-top: 2px; }
+.tl { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.ti { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 10px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--card); }
+.ti.is-enviando { background: var(--sky); }
+.ti.is-falhou { border-color: var(--error); background: var(--error-soft); }
+.ti .tt { width: 48px; aspect-ratio: 4 / 5; border-radius: 7px; overflow: hidden; background: var(--ink); border: 0; padding: 0; cursor: pointer; }
+.ti .tt img, .ti .tt video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ti .tb { display: grid; gap: 4px; min-width: 0; }
+.ti h3 { font-size: 0.95rem; overflow-wrap: anywhere; }
+.ti .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.8rem; color: var(--muted); }
+.ti .meta b { font-family: var(--display); color: var(--ink); }
+.ti .why { font-size: 0.82rem; overflow-wrap: anywhere; }
+.ti .why small { display: block; color: var(--muted); font-size: 0.74rem; margin-top: 2px; }
+.ti .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.pill.send { background: var(--butter); }
+.pill.send::before { content: ""; width: 8px; height: 8px; margin-right: 6px; border: 2px solid var(--ink); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.sub { font-family: var(--display); font-weight: 700; font-size: 1.2rem; margin: 4px 0 10px; }
 kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 6px; background: var(--card); font-family: var(--body); font-size: 0.75rem; text-align: center; }
 
 .empty { display: grid; justify-items: center; gap: 12px; padding: 40px 16px; text-align: center; border: 1.5px dashed var(--line); border-radius: 18px; }
@@ -256,7 +299,13 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   main { padding-block: 28px 56px; }
   .toast { bottom: 24px; }
   #igNotice { display: block; }
-  .review { display: grid; grid-template-columns: auto minmax(0, 420px); grid-template-rows: auto auto 1fr; grid-template-areas: "deck copy" "deck actions" "deck keys"; justify-content: center; column-gap: 40px; row-gap: 18px; }
+  .review { display: grid; grid-template-columns: auto minmax(0, 420px); grid-template-rows: auto auto auto 1fr; grid-template-areas: "deck copy" "deck opts" "deck actions" "deck keys"; justify-content: center; column-gap: 40px; row-gap: 18px; }
+  .opts { grid-area: opts; grid-template-columns: 1fr; gap: 6px; }
+  .opt { grid-template-columns: 34px 78px minmax(0, 1fr); justify-items: start; align-items: center; gap: 10px; min-height: 0; padding: 8px 12px; text-align: left; font-size: 0.85rem; }
+  .opt small { display: block; }
+  .optnotes { display: none; }
+  .ti { grid-template-columns: 56px minmax(0, 1fr); }
+  .ti .tt { width: 56px; }
   .stage { display: contents; }
   .deckwrap { grid-area: deck; display: block; }
   .deck { height: auto; width: min(380px, calc((100dvh - 200px) * 9 / 16)); min-width: 240px; }
@@ -277,6 +326,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   .vinfo { padding: 22px 64px 24px 24px; overflow-y: auto; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .trackhead .live i, .pill.send::before { animation: none; }
   .card.settle, .card.fly { transition: none; }
   .spin { animation-duration: 2s; }
 }
@@ -308,6 +358,11 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
 
   <section id="view-posts" hidden>
     <div id="postsNotice"></div>
+    <section class="track" aria-labelledby="trackTitle">
+      <div class="trackhead"><h2 id="trackTitle">Andamento</h2><span class="live" id="trackLive" hidden><i aria-hidden="true"></i>atualiza sozinho</span></div>
+      <div id="track" aria-live="polite"></div>
+    </section>
+    <h2 class="sub">Resultados</h2>
     <div class="stats" id="stats"></div>
     <p class="statnote" id="statNote"></p>
     <div class="filters" id="filters" role="group" aria-label="Filtrar posts"></div>
@@ -372,7 +427,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   var API = (window.SRPOST && window.SRPOST.api) || "";
   var STORE = "srpost.portal.token";
   var $ = function (id) { return document.getElementById(id); };
-  var S = { token: "", data: null, queue: [], view: "aprovar", library: null, libraryStale: true, filter: "todos", busy: false, total: 0 };
+  var S = { token: "", data: null, queue: [], view: "aprovar", library: null, libraryStale: true, filter: "todos", busy: false, total: 0, progress: null, progressTimer: null, progressBusy: false };
 
   // ---------- utilitarios ----------
   function el(tag, attrs) {
@@ -452,6 +507,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     var host = $("toastHost"); host.textContent = "";
     var t = el("div", { class: "toast" + (opts.bad ? " bad" : "") }, el("span", { text: msg }));
     if (opts.action) t.appendChild(el("button", { type: "button", text: opts.action, onclick: function () { host.textContent = ""; opts.onAction(); } }));
+    if (opts.action2) t.appendChild(el("button", { type: "button", text: opts.action2, onclick: function () { host.textContent = ""; opts.onAction2(); } }));
     host.appendChild(t);
     toastTimer = setTimeout(function () { host.textContent = ""; }, opts.ms || 6000);
   }
@@ -503,8 +559,8 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     if ((ig || tt) === "ok") {
       var many = Number(q.get("contas")) > 1, late = Number(q.get("atrasados")) || 0;
       if (late && !many) {
-        toast(NET[net] + " reconectado. " + (late === 1 ? "O post que estava parado sai no próximo ciclo, em até 5 minutos."
-          : late + " posts que estavam parados voltaram para a fila: o primeiro sai em até 5 minutos e os demais nos próximos horários."), { ms: 14000 });
+        toast(NET[net] + " reconectado. " + (late === 1 ? "O post que estava parado sai em instantes."
+          : late + " posts que estavam parados voltaram para a fila: o primeiro sai em instantes e os demais nos próximos horários."), { ms: 14000 });
         return;
       }
       toast(many ? "Conectamos @" + ((acc && acc.username) || "sua conta") + ". Você liberou mais de uma conta: para usar outra, desconecte e refaça o login marcando só a conta desejada."
@@ -532,7 +588,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     document.querySelectorAll("[data-view]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.view === view)); });
     pauseAll();
     if (view === "aprovar") { fit(); playTop(); }
-    if (view === "posts") loadLibrary();
+    if (view === "posts") { loadLibrary(); loadProgress(); } else stopProgress();
     window.scrollTo(0, 0);
   }
   document.querySelectorAll("[data-view]").forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.view); }); });
@@ -670,22 +726,75 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     if (S.queue[1]) deck.appendChild(cardEl(S.queue[1], false));
     deck.appendChild(cardEl(c, true, (seen + 1) + " de " + S.total));
     host.appendChild(el("div", { class: "stage" }, el("div", { class: "deckwrap" }, deck),
+      el("div", { class: "opts", id: "opts", role: "group", "aria-label": "Opções deste post" }),
       el("div", { class: "actions" }, actBtn("no", "Reprovar", "ArrowLeft"), actBtn("fix", "Pedir ajuste", "ArrowUp"), actBtn("yes", "Aprovar", "ArrowRight"))));
-    var copy = el("div", { class: "copy" }, el("span", { class: "label", text: "Legenda" }));
-    copy.appendChild(el("p", { text: c.caption || (c.format === "story" ? "Story não leva legenda." : "Sem legenda.") }));
-    if (c.hashtags) copy.appendChild(el("p", { class: "tags", text: c.hashtags }));
-    var facts = el("div", { class: "facts2" }, el("span", null, "Publica em: ", el("b", { text: nets(c.format === "story" ? ["instagram"] : c.platforms) })));
-    if (c.location_name) facts.appendChild(el("span", null, "Local marcado: ", el("b", { text: c.location_name })));
-    if (c.audio_name) facts.appendChild(el("span", null, "Nome do áudio: ", el("b", { text: c.audio_name })));
-    if (c.auto_music && (c.platforms || []).indexOf("tiktok") >= 0 && c.kind !== "video") facts.appendChild(el("span", { text: "No TikTok, com música automática." }));
-    copy.appendChild(facts);
-    host.appendChild(copy);
+    host.appendChild(el("div", { class: "copy", id: "copy" }));
+    paintOptions(c);
     var keys = el("p", { class: "keys" });
     [["←", " reprovar  "], ["↑", " pedir ajuste  "], ["→", " aprovar  "], ["Z", " desfazer"]].forEach(function (k) { keys.appendChild(el("kbd", { text: k[0] })); keys.appendChild(document.createTextNode(k[1])); });
     host.appendChild(keys);
     fit();
     if (S.view === "aprovar") playTop();
   }
+  // ---------- opcoes do post (story, legenda, musica, local) ----------
+  var OPTS = [["story", "Story"], ["caption", "Legenda"], ["music", "Música"], ["location", "Local"]];
+  function optValues(c) { var v = {}; OPTS.forEach(function (o) { var st = c.options && c.options[o[0]]; if (st && st.allowed) v[o[0]] = !!st.on; }); return v; }
+  function optOn(c, k) { var st = c.options && c.options[k]; return !!(st && st.on); }
+  // Desenha os quatro interruptores e o resumo do que vai junto com o post. O que a rede nao aceita fica travado, com o motivo.
+  function paintOptions(c) {
+    var row = $("opts"), copy = $("copy"); if (!row || !copy) return;
+    row.textContent = "";
+    OPTS.forEach(function (o) {
+      var st = c.options && c.options[o[0]]; if (!st) return;
+      var b = el("button", { class: "opt" + (st.allowed ? "" : " locked"), type: "button", role: "switch", "aria-checked": String(!!st.on), "aria-disabled": String(!st.allowed),
+        "aria-label": o[1] + (st.on ? ": sim" : ": não") + (st.allowed ? "" : ". Indisponível: " + st.reason) },
+        el("span", { class: "sw", "aria-hidden": "true" }), el("span", { text: o[1] }), el("small", { text: st.allowed ? (st.note || (st.on ? "Sim" : "Não")) : st.reason }));
+      b.addEventListener("click", function () {
+        if (!st.allowed) { toast(o[1] + ": " + st.reason, { ms: 8000 }); return; }
+        toggleOption(c, o[0]);
+      });
+      row.appendChild(b);
+    });
+    copy.textContent = "";
+    copy.appendChild(el("span", { class: "label", text: "Legenda" }));
+    var capOn = optOn(c, "caption"), hasText = c.caption || c.hashtags || c.link_url;
+    if (c.format === "story") copy.appendChild(el("p", { text: "Story não leva legenda." }));
+    else if (!hasText) copy.appendChild(el("p", { text: "Sem legenda." }));
+    else {
+      if (!capOn) copy.appendChild(el("p", { class: "muted", text: "Este post vai sem legenda (opção desligada)." }));
+      if (c.caption) copy.appendChild(el("p", { class: capOn ? "" : "offcap", text: c.caption }));
+      if (c.link_url) copy.appendChild(el("p", { class: "linkline" + (capOn ? "" : " offcap") }, "Link: ", el("a", { href: c.link_url, target: "_blank", rel: "noopener", text: c.link_url })));
+      if (c.hashtags) copy.appendChild(el("p", { class: "tags" + (capOn ? "" : " offcap"), text: c.hashtags }));
+    }
+    var where = nets(c.format === "story" ? ["instagram"] : c.platforms) + (c.format !== "story" && optOn(c, "story") ? ", e também no story do Instagram" : "");
+    var facts = el("div", { class: "facts2" }, el("span", null, "Publica em: ", el("b", { text: where })));
+    if (c.location_name && optOn(c, "location")) facts.appendChild(el("span", null, "Local marcado: ", el("b", { text: c.location_name })));
+    if (c.audio_name) facts.appendChild(el("span", null, "Nome do áudio: ", el("b", { text: c.audio_name })));
+    if (optOn(c, "music")) facts.appendChild(el("span", { text: "No TikTok, com música automática." }));
+    copy.appendChild(facts);
+    // No celular os interruptores sao compactos: os motivos e observacoes ficam listados aqui.
+    var notes = el("div", { class: "optnotes" });
+    OPTS.forEach(function (o) {
+      var st = c.options && c.options[o[0]]; if (!st) return;
+      var text = st.allowed ? st.note : st.reason; if (!text) return;
+      notes.appendChild(el("span", null, el("b", { text: o[1] + (st.allowed ? ": " : " (indisponível): ") }), text));
+    });
+    if (notes.childNodes.length) copy.appendChild(notes);
+  }
+  function toggleOption(c, key) {
+    var st = c.options[key], before = JSON.parse(JSON.stringify(c.options));
+    st.on = !st.on; paintOptions(c);
+    var body = {}; body[key] = st.on;
+    api("POST", "/options", { creative_id: c.id, options: body }).then(function (r) {
+      // A resposta traz as observacoes atualizadas (ex.: com o story ligado, a legenda vale so para o post principal).
+      if (r.options && S.queue.indexOf(c) >= 0) { var mine = optValues(c); c.options = r.options; Object.keys(mine).forEach(function (k) { if (c.options[k] && c.options[k].allowed) c.options[k].on = mine[k]; }); if (S.queue[0] === c) paintOptions(c); }
+    }).catch(function (e) {
+      if (e.code === "already_decided" || e.code === "not_found") return;
+      c.options = before; if (S.queue[0] === c) paintOptions(c);
+      toast(e.message, { bad: true });
+    });
+  }
+
   var mobile = window.matchMedia("(max-width: 859px)");
   function fit() {
     var stage = document.querySelector(".stage"); if (!stage) return;
@@ -756,7 +865,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
     var c = S.queue[0]; if (!c || S.busy) return;
     S.busy = true;
     var kind = action === "approve" ? "yes" : action === "reject" ? "no" : "fix";
-    var req = api("POST", "/decide", { creative_id: c.id, action: action, comment: comment });
+    var req = api("POST", "/decide", { creative_id: c.id, action: action, comment: comment, options: action === "approve" ? optValues(c) : undefined });
     req.catch(function () {});
     // Otimista: o proximo criativo aparece assim que o cartao sai; se a API recusar, o criativo volta para a fila.
     flyOut(topCard(), kind, function () {
@@ -769,9 +878,11 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
           (res.platforms || []).forEach(function (p) { if (acc[p] && !acc[p].connected) acc[p].waiting = (acc[p].waiting || 0) + 1; });
           renderAlert(); renderNotice();
         }
-        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + "."
+        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + (res.story ? ", e também no story" : "") + "."
           : action === "reject" ? "Reprovado. O agente não publica este." : "Pedido de ajuste enviado ao agente.";
-        toast(msg, { action: "Desfazer", onAction: function () { undo(c); } });
+        var o = { action: "Desfazer", onAction: function () { undo(c); }, ms: 8000 };
+        if (action === "approve") { o.action2 = "Acompanhar"; o.onAction2 = function () { show("posts"); }; }
+        toast(msg, o);
       }).catch(function (e) {
         S.libraryStale = true;
         if (e.code !== "already_decided" && e.code !== "not_found") { S.queue.unshift(c); renderDeck(); }
@@ -851,7 +962,7 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
   var METRIC_LABELS = [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]];
   // Rede, status, horario, link e metricas de uma publicacao.
   function postBox(p, m) {
-    var line = el("div", { class: "meta" }, el("b", { text: NET[p.platform] || "Instagram" }), postPill(p),
+    var line = el("div", { class: "meta" }, el("b", { text: (NET[p.platform] || "Instagram") + (p.placement === "story" ? " · Story" : "") }), postPill(p),
       el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at, true) : "para " + fmtDate(p.scheduled_for, true) }));
     if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir na rede" }));
     var box = el("div", { class: "pp" }, line);
@@ -860,8 +971,89 @@ dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; ma
       METRIC_LABELS.forEach(function (k) { if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1])); });
       box.appendChild(mt);
     } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
-    if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. O time do Sr. Post já foi avisado." }));
+    if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. Veja o motivo e tente de novo em Andamento, no topo desta aba." }));
     return box;
+  }
+
+  // ---------- andamento: na fila, enviando, publicado ou falhou, e os proximos posts ----------
+  var TSTATE = { na_fila: ["wait", "Na fila"], enviando: ["send", "Enviando"], publicado: ["live", "Publicado"], falhou: ["no", "Falhou"] };
+  function stopProgress() { clearTimeout(S.progressTimer); S.progressTimer = null; }
+  function loadProgress() {
+    stopProgress();
+    if (S.view !== "posts" || document.hidden || S.progressBusy) return;
+    S.progressBusy = true;
+    api("GET", "/progress").then(function (d) {
+      var before = S.progress; S.progress = d; S.progressBusy = false;
+      // Um post que acabou de sair muda os numeros: recarrega os resultados.
+      if (before) {
+        var was = {}; before.items.forEach(function (i) { was[i.id] = i.state; });
+        if (d.items.some(function (i) { return was[i.id] && was[i.id] !== i.state; })) { S.libraryStale = true; loadLibrary(); refreshAccounts(); }
+      }
+      renderProgress();
+      // Mais rapido enquanto ha post saindo agora ou prestes a sair.
+      var soon = Date.now() + 3 * 60000;
+      var hot = d.items.some(function (i) { return i.state === "enviando" || (i.state === "na_fila" && i.eta && new Date(i.eta).getTime() < soon); });
+      S.progressTimer = setTimeout(loadProgress, hot ? 5000 : 20000);
+    }).catch(function (e) {
+      S.progressBusy = false;
+      if (!S.progress) { var host = $("track"); host.textContent = ""; host.appendChild(el("p", { class: "muted", text: e.message })); }
+      S.progressTimer = setTimeout(loadProgress, 20000);
+    });
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopProgress(); else if (S.view === "posts") loadProgress(); });
+  function retryPost(i, btn) {
+    btn.disabled = true; btn.textContent = "Enviando de novo...";
+    api("POST", "/retry", { post_id: i.id }).then(function () { toast("O post voltou para a fila e sai no próximo horário livre da conta."); loadProgress(); })
+      .catch(function (e) { btn.disabled = false; btn.textContent = "Tentar de novo"; toast(e.message, { bad: true }); });
+  }
+  function trackItem(i) {
+    var st = TSTATE[i.state] || TSTATE.na_fila, gap = S.progress.pacing.min_gap_minutes;
+    var tt = el("button", { class: "tt", type: "button", "aria-label": "Ver criativo: " + i.title });
+    if (i.thumb) tt.appendChild(el("img", { src: i.thumb, alt: "", loading: "lazy" }));
+    else { var v = el("video", { src: i.media_url, preload: "metadata" }); v.muted = true; tt.appendChild(v); }
+    tt.addEventListener("click", function () {
+      var it = S.library && S.library.items.filter(function (x) { return x.id === i.creative_id; })[0];
+      if (it) openViewer(it);
+    });
+    var meta = el("div", { class: "meta" }, el("b", { text: (NET[i.platform] || i.platform) + (i.placement === "story" ? " · Story" : "") }), el("span", { class: "pill " + st[0], text: st[1] }));
+    var when = "";
+    if (i.state === "publicado") when = "em " + fmtDate(i.published_at, true);
+    else if (i.state === "enviando") when = "enviando para a rede agora";
+    else if (i.state === "na_fila") when = i.wait === "conta" ? "aguardando a conexão da conta" : "sai " + fmtDate(i.eta || i.scheduled_for, true);
+    else when = "estava marcado para " + fmtDate(i.scheduled_for, true);
+    meta.appendChild(el("span", { text: when }));
+    if (i.permalink) meta.appendChild(el("a", { href: i.permalink, target: "_blank", rel: "noopener", text: "Abrir na rede" }));
+    var body = el("div", { class: "tb" }, el("h3", { text: i.title }), meta);
+    if (i.state === "na_fila" && i.wait === "intervalo") body.appendChild(el("p", { class: "why muted", text: "Respeitando o intervalo de " + gap + " min entre publicações da mesma conta." }));
+    if (i.state === "na_fila" && i.wait === "teto") body.appendChild(el("p", { class: "why muted", text: "A conta atingiu o teto de " + S.progress.pacing.daily_cap + " publicações em 24 horas. O post sai quando abrir a próxima vaga." }));
+    if (i.state === "na_fila" && i.wait === "pausa") body.appendChild(el("p", { class: "why muted", text: "A rede pediu uma pausa nesta conta. O post sai quando a pausa terminar." }));
+    if (i.error && i.state !== "publicado") {
+      var why = el("p", { class: "why" }, (i.state === "falhou" ? "Motivo: " : "Tentativa anterior: ") + i.error.message);
+      if (i.error.detail) why.appendChild(el("small", { text: "Resposta da rede: " + i.error.detail }));
+      body.appendChild(why);
+    }
+    if (i.can_retry) {
+      var btn = el("button", { class: "btn sm", type: "button", text: "Tentar de novo" });
+      btn.addEventListener("click", function () { retryPost(i, btn); });
+      body.appendChild(el("div", { class: "row" }, btn));
+    }
+    return el("li", { class: "ti is-" + i.state }, tt, body);
+  }
+  function renderProgress() {
+    var host = $("track"), d = S.progress; if (!d) return;
+    host.textContent = ""; $("trackLive").hidden = false;
+    var by = function (s) { return d.items.filter(function (i) { return i.state === s; }); };
+    var t = function (i) { return i.eta || i.scheduled_for || ""; };
+    var next = by("na_fila").sort(function (a, b) { return (a.wait === "conta") - (b.wait === "conta") || (t(a) < t(b) ? -1 : 1); });
+    var done = by("publicado").sort(function (a, b) { return a.published_at < b.published_at ? 1 : -1; }).slice(0, 5);
+    var groups = [["Enviando agora", by("enviando")], ["Precisa de atenção", by("falhou")], ["Próximos posts", next], ["Publicados nas últimas 48 horas", done]];
+    var any = false;
+    groups.forEach(function (g) {
+      if (!g[1].length) return; any = true;
+      var ul = el("ul", { class: "tl" }); g[1].forEach(function (i) { ul.appendChild(trackItem(i)); });
+      host.appendChild(el("div", { class: "tgroup" }, el("span", { class: "label", text: g[0] + " · " + g[1].length }), ul));
+    });
+    if (!any) host.appendChild(el("p", { class: "muted", text: "Nenhum post em andamento. Assim que você aprovar um criativo, ele aparece aqui com a data e a hora em que vai ao ar." }));
   }
 
   // ---------- visualizacao ampliada ----------

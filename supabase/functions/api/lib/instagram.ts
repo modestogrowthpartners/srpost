@@ -167,12 +167,12 @@ export async function createContainer(igUserId: string, token: string, p: Publis
     params.media_type = "REELS";
     params.video_url = p.mediaUrl;
     params.share_to_feed = "true";
-    params.caption = p.caption;
+    if (p.caption) params.caption = p.caption;
     // A API so renomeia o audio original do Reel; nao seleciona musica da biblioteca do Instagram.
     if (p.audioName) params.audio_name = p.audioName;
   } else {
     params.image_url = p.mediaUrl;
-    params.caption = p.caption;
+    if (p.caption) params.caption = p.caption;
   }
   if (p.locationId && p.format !== "story") params.location_id = p.locationId;
   if (p.aiGenerated) params.is_ai_generated = "true";
@@ -200,7 +200,8 @@ async function createCarousel(igUserId: string, token: string, p: PublishInput):
       await new Promise((r) => setTimeout(r, 4000));
     }
   }
-  const params: Record<string, string> = { media_type: "CAROUSEL", children: ids.join(","), caption: p.caption };
+  const params: Record<string, string> = { media_type: "CAROUSEL", children: ids.join(",") };
+  if (p.caption) params.caption = p.caption;
   if (p.locationId) params.location_id = p.locationId;
   const r = await post(`/${igUserId}/media`, params, token);
   return String(r.id);
@@ -213,6 +214,18 @@ export async function searchPlaces(q: string, token: string) {
     id: String(p.id), name: String(p.name ?? ""),
     address: [p.location?.street, p.location?.city, p.location?.state].filter(Boolean).join(", "),
   }));
+}
+
+// Uso do limite de publicacoes da conta na janela de 24 horas, como a Meta informa (hoje 50 por 24 horas).
+export async function publishingLimit(igUserId: string, token: string): Promise<{ used: number; total: number; windowSeconds: number } | null> {
+  const r = await get(`/${igUserId}/content_publishing_limit`, { fields: "quota_usage,config" }, token);
+  const d = r?.data?.[0];
+  if (!d || typeof d.quota_usage !== "number") return null;
+  return {
+    used: d.quota_usage,
+    total: typeof d.config?.quota_total === "number" ? d.config.quota_total : 50,
+    windowSeconds: typeof d.config?.quota_duration === "number" ? d.config.quota_duration : 86_400,
+  };
 }
 
 export async function containerStatus(containerId: string, token: string): Promise<{ code: string; detail: string }> {

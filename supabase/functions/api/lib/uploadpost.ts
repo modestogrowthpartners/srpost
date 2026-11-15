@@ -79,13 +79,16 @@ export async function upload(input: UploadInput): Promise<string> {
   let path = "/api/upload";
   if (input.kind === "video") {
     form.append("video", input.urls[0]);
-    form.append("title", input.caption.slice(0, 2200) || input.title);
+    // Sem legenda (opcao desligada), o titulo nao e enviado: no TikTok ele e opcional.
+    const text = input.caption.slice(0, 2200) || input.title;
+    if (text) form.append("title", text);
     if (input.aiGenerated) form.append("is_aigc", "true");
   } else {
     path = "/api/upload_photos";
     for (const u of input.urls) form.append("photos[]", u);
-    form.append("title", (input.title || input.caption).slice(0, 90));
-    form.append("tiktok_description", input.caption.slice(0, 4000));
+    const short = (input.title || input.caption).slice(0, 90);
+    if (short) form.append("title", short);
+    if (input.caption) form.append("tiktok_description", input.caption.slice(0, 4000));
     if (input.autoMusic) form.append("auto_add_music", "true");
   }
   const r = await call("POST", path, form);

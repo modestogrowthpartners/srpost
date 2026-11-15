@@ -3,8 +3,10 @@ import {
   authKey, BUCKET, createCreatives, db, FUNCTIONS_BASE, getSetting, HttpError, igConfigured, isUuid, json, must, one,
   PLATFORMS, portalUrl, randomToken, readJson, sha256Hex, signedUpload, str,
 } from "./core.ts";
-import { IgError, searchPlaces } from "./instagram.ts";
+import { IgError, publishingLimit, searchPlaces } from "./instagram.ts";
 import { uploadPostConfigured } from "./uploadpost.ts";
+import { composeCaption, creativeOptions, normalizeOptions, optionColumns } from "./options.ts";
+import { friendlyError, pacing } from "./portal.ts";
 
 function slugify(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
@@ -30,16 +32,17 @@ function agentPatch(a: Record<string, unknown> | undefined) {
 }
 
 async function overview() {
-  const [clients, creatives, posts, worker, igError, configId, ttError] = await Promise.all([
+  const [clients, creatives, posts, worker, igError, configId, ttError, pace] = await Promise.all([
     db.from("clients").select(`id, name, slug, segment, status, is_demo, created_at,
       agents ( name, status, posts_per_week, post_times, platforms ),
-      social_accounts ( platform, username, status, followers_count, token_expires_at, last_error )`).order("created_at"),
-    db.from("creatives").select("client_id, status").limit(10000),
+      social_accounts ( platform, username, status, followers_count, token_expires_at, last_error, simulated, cooldown_until )`).order("created_at"),
+    db.from("creatives").select("client_id, status").is("story_of", null).limit(10000),
     db.from("posts").select("client_id, status").limit(10000),
     getSetting("worker_last_run"),
     getSetting("ig_last_oauth_error"),
     getSetting("ig_login_config_id"),
     getSetting("tiktok_last_connect_error"),
+    pacing(),
   ]);
   const accountsOf = (c: any) => (Array.isArray(c.social_accounts) ? c.social_accounts : c.social_accounts ? [c.social_accounts] : []) as any[];
   const counts: Record<string, Record<string, number>> = {};
@@ -64,6 +67,7 @@ async function overview() {
       ig_last_oauth_error: igError ? JSON.parse(igError) : null,
       tiktok_configured: uploadPostConfigured(), tiktok_provider: "uploadpost",
       tiktok_last_connect_error: ttError ? JSON.parse(ttError) : null,
+      pacing: pace,
     },
   });
 }
@@ -78,7 +82,8 @@ async function createClient(req: Request) {
   if (dup) slug = `${slug.slice(0, 34)}-${Math.random().toString(36).slice(2, 6)}`;
   const client = must(await db.from("clients").insert({
     name, slug, segment: str(b.segment, 80) || null, timezone: str(b.timezone, 60) || "America/Sao_Paulo",
-  }).select("id, name, slug").single()) as { id: string };
+    is_demo: b.is_demo === true,
+  }).select("id, name, slug, is_demo").single()) as { id: string };
   must(await db.from("agents").insert({ client_id: client.id, ...agentPatch(b.agent as Record<string, unknown>) }));
   return json({ client }, 201);
 }
@@ -98,37 +103,127 @@ async function updateClient(id: string, req: Request) {
 }
 
 async function clientDetail(id: string) {
-  const [client, links, creatives] = await Promise.all([
+  const postFields = `id, platform, status, scheduled_for, published_at, permalink, attempts, last_error, last_error_code,
+        post_metrics ( views, reach, likes, comments, saved, shares, total_interactions, fetched_at ),
+        post_attempts ( attempt, phase, outcome, error, error_code, created_at )`;
+  const [client, links, creatives, stories, keys] = await Promise.all([
     db.from("clients").select(`id, name, slug, segment, status, timezone, is_demo,
       agents ( name, role_line, bio, tone, pillars, posts_per_week, post_times, platforms, status ),
-      social_accounts ( platform, provider, username, name, status, followers_count, account_type, token_expires_at, connected_at, last_error, page_name )`).eq("id", id).maybeSingle(),
+      social_accounts ( platform, provider, provider_ref, username, name, status, followers_count, account_type, token_expires_at, connected_at, last_error, page_name, simulated, cooldown_until, spam_strikes )`).eq("id", id).maybeSingle(),
     db.from("portal_links").select("id, label, created_at, expires_at, revoked_at, last_used_at").eq("client_id", id).order("created_at", { ascending: false }),
-    db.from("creatives").select(`id, kind, format, media_url, thumb_url, media, title, caption, hashtags, platforms, location_id, location_name,
-      audio_name, auto_music, ai_generated, suggested_at, status, decision_comment, decided_at, revision_of, source, created_at,
-      posts ( id, platform, status, scheduled_for, published_at, permalink, attempts, last_error,
-        post_metrics ( views, reach, likes, comments, saved, shares, total_interactions, fetched_at ),
-        post_attempts ( attempt, phase, outcome, error, error_code, created_at ) )`)
-      .eq("client_id", id).order("created_at", { ascending: false }).limit(400),
+    db.from("creatives").select(`id, kind, format, media_url, thumb_url, media, title, caption, hashtags, link_url, platforms, location_id, location_name,
+      audio_name, auto_music, opt_story, opt_caption, opt_location, ai_generated, suggested_at, status, decision_comment, decided_at, revision_of, source, external_ref, created_at,
+      posts!posts_creative_id_fkey ( ${postFields} )`)
+      .eq("client_id", id).is("story_of", null).order("created_at", { ascending: false }).limit(400),
+    db.from("creatives").select(`story_of, posts!posts_creative_id_fkey ( ${postFields} )`).eq("client_id", id).not("story_of", "is", null).limit(400),
+    db.from("api_keys").select("id, name, role, created_at, last_used_at, revoked_at").eq("client_id", id).order("created_at"),
   ]);
   const c = must(client) as any;
   if (!c) throw new HttpError(404, "not_found", "Cliente não encontrado.");
-  const accounts = (Array.isArray(c.social_accounts) ? c.social_accounts : c.social_accounts ? [c.social_accounts] : []) as any[];
+  const list = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []) as any[];
+  const accounts = list(c.social_accounts);
+  const extra = new Map<string, any[]>();
+  for (const s of must(stories) ?? []) extra.set(s.story_of, [...(extra.get(s.story_of) ?? []), ...list(s.posts)]);
   return json({
     client: {
       ...c, agent: one(c.agents), accounts,
       instagram: accounts.find((a) => a.platform === "instagram") ?? null, agents: undefined, social_accounts: undefined,
     },
     links: must(links) ?? [],
+    keys: must(keys) ?? [],
     creatives: (must(creatives) ?? []).map((r: any) => {
-      const list = (Array.isArray(r.posts) ? r.posts : r.posts ? [r.posts] : []) as any[];
-      const posts = list.map((p) => ({
+      const all = [
+        ...list(r.posts).map((p) => ({ ...p, placement: r.format === "story" ? "story" : "main" })),
+        ...(extra.get(r.id) ?? []).map((p) => ({ ...p, placement: "story" })),
+      ];
+      const posts = all.map((p) => ({
         ...p, post_metrics: undefined, post_attempts: undefined, metrics: one(p.post_metrics),
         history: [...((p.post_attempts ?? []) as any[])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
       }))
-        .sort((a, b) => String(a.platform).localeCompare(String(b.platform)));
-      return { ...r, posts };
+        .sort((a, b) => String(a.platform).localeCompare(String(b.platform)) || (a.placement === "story" ? 1 : 0) - (b.placement === "story" ? 1 : 0));
+      return { ...r, posts, options: creativeOptions(r) };
     }),
   });
+}
+
+// Remove um cliente de demonstracao (usado em testes e demonstracoes). Clientes reais nao sao apagados por aqui.
+async function deleteClient(id: string) {
+  const { data: c } = await db.from("clients").select("id, is_demo").eq("id", id).maybeSingle();
+  if (!c) throw new HttpError(404, "not_found", "Cliente não encontrado.");
+  if (!c.is_demo) throw new HttpError(409, "not_demo", "Só clientes de demonstração podem ser removidos pelo painel.");
+  const { data: accs } = await db.from("social_accounts").select("id").eq("client_id", id);
+  for (const a of accs ?? []) await db.rpc("ig_token_delete", { p_account_id: a.id });
+  const { data: media } = await db.from("creatives").select("media_path, media").eq("client_id", id);
+  const paths = (media ?? []).flatMap((m: any) => [m.media_path, ...((m.media ?? []) as any[]).map((x) => x?.path)])
+    .filter((p: unknown): p is string => typeof p === "string" && p.startsWith(`${id}/`));
+  must(await db.from("clients").delete().eq("id", id).eq("is_demo", true));
+  if (paths.length) await db.storage.from(BUCKET).remove([...new Set(paths)]);
+  return json({ ok: true });
+}
+
+// Conta simulada de um cliente de demonstracao: percorre o fluxo de publicacao sem chamar nenhuma rede.
+async function simAccount(id: string, req: Request) {
+  const b = await readJson(req);
+  const platform = str(b.platform, 12) || "instagram";
+  const mode = str(b.mode, 10) || "ok";
+  if (!(PLATFORMS as readonly string[]).includes(platform)) throw new HttpError(400, "bad_platform", "Plataforma inválida.");
+  if (!["ok", "falha", "spam", "remover"].includes(mode)) throw new HttpError(400, "bad_mode", "mode deve ser ok, falha, spam ou remover.");
+  const { data: c } = await db.from("clients").select("id, is_demo").eq("id", id).maybeSingle();
+  if (!c) throw new HttpError(404, "not_found", "Cliente não encontrado.");
+  if (!c.is_demo) throw new HttpError(409, "not_demo", "Conta simulada só existe em cliente de demonstração.");
+  const { data: cur } = await db.from("social_accounts").select("id, simulated").eq("client_id", id).eq("platform", platform).maybeSingle();
+  if (cur && !cur.simulated) throw new HttpError(409, "real_account", "Este cliente já tem uma conta real conectada nesta rede.");
+  if (mode === "remover") {
+    if (cur) must(await db.from("social_accounts").delete().eq("id", cur.id).eq("simulated", true));
+    return json({ ok: true });
+  }
+  const now = new Date().toISOString();
+  const row = must(await db.from("social_accounts").upsert({
+    client_id: id, platform, provider: platform === "tiktok" ? "uploadpost" : "meta", provider_ref: mode === "ok" ? null : mode,
+    external_id: `sim_${id.slice(0, 8)}_${platform}`, username: "conta_simulada", name: "Conta simulada (demonstração)",
+    simulated: true, status: "connected", last_error: null, cooldown_until: null, spam_strikes: 0, connected_at: now, updated_at: now,
+  }, { onConflict: "client_id,platform" }).select("id").single()) as { id: string };
+  await db.from("posts").update({ social_account_id: row.id }).eq("client_id", id).eq("platform", platform).in("status", ["scheduled", "failed"]);
+  return json({ ok: true, mode });
+}
+
+// Uso do limite de publicacoes: o que a Meta informa para a conta e o ritmo proprio do Sr. Post.
+async function publishingUsage(id: string) {
+  const pace = await pacing();
+  const out: Record<string, unknown> = { pacing: pace, networks: {} };
+  const { data: accs } = await db.from("social_accounts").select("id, platform, provider, external_id, status, simulated, cooldown_until").eq("client_id", id);
+  for (const a of accs ?? []) {
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const { count } = await db.from("posts").select("id", { count: "exact", head: true })
+      .eq("client_id", id).eq("platform", a.platform).eq("is_example", false).eq("status", "published").gte("published_at", since);
+    const { data: next } = await db.rpc("account_next_allowed", { p_client_id: id, p_platform: a.platform });
+    const info: Record<string, unknown> = { status: a.status, simulated: a.simulated, published_24h: count ?? 0, next_allowed_at: next, cooldown_until: a.cooldown_until, network_quota: null };
+    if (a.platform === "instagram" && a.provider === "meta" && !a.simulated && a.status === "connected") {
+      const { data: token } = await db.rpc("ig_token_read", { p_account_id: a.id });
+      try { info.network_quota = token ? await publishingLimit(a.external_id, token as string) : null; }
+      catch (e) { info.network_quota_error = e instanceof Error ? e.message : String(e); }
+    }
+    (out.networks as Record<string, unknown>)[a.platform] = info;
+  }
+  return json(out);
+}
+
+async function updateSettings(req: Request) {
+  const b = await readJson(req);
+  const rows: { key: string; value: string }[] = [];
+  if ("publish_min_gap_minutes" in b) {
+    const v = Number(b.publish_min_gap_minutes);
+    if (!Number.isInteger(v) || v < 0 || v > 1440) throw new HttpError(400, "bad_gap", "O intervalo entre posts deve ficar entre 0 e 1.440 minutos.");
+    rows.push({ key: "publish_min_gap_minutes", value: String(v) });
+  }
+  if ("publish_daily_cap" in b) {
+    const v = Number(b.publish_daily_cap);
+    if (!Number.isInteger(v) || v < 1 || v > 50) throw new HttpError(400, "bad_cap", "O teto diário deve ficar entre 1 e 50 publicações por conta.");
+    rows.push({ key: "publish_daily_cap", value: String(v) });
+  }
+  if (!rows.length) throw new HttpError(400, "empty", "Nada para atualizar.");
+  must(await db.from("settings").upsert(rows));
+  return json({ ok: true, pacing: await pacing() });
 }
 
 async function createLink(id: string, req: Request) {
@@ -145,9 +240,12 @@ async function createLink(id: string, req: Request) {
 }
 
 async function deleteCreative(id: string) {
-  const { data: c } = await db.from("creatives").select("id, media_path, media, posts ( status )").eq("id", id).maybeSingle();
+  const { data: c } = await db.from("creatives").select("id, media_path, media, posts!posts_creative_id_fkey ( status )").eq("id", id).maybeSingle();
   if (!c) throw new HttpError(404, "not_found", "Criativo não encontrado.");
-  const posts = (Array.isArray((c as any).posts) ? (c as any).posts : (c as any).posts ? [(c as any).posts] : []) as any[];
+  const own = (Array.isArray((c as any).posts) ? (c as any).posts : (c as any).posts ? [(c as any).posts] : []) as any[];
+  // O story gerado na aprovacao some junto com o criativo: tambem nao pode estar publicado ou em publicacao.
+  const { data: kids } = await db.from("creatives").select("posts!posts_creative_id_fkey ( status )").eq("story_of", id);
+  const posts = [...own, ...(kids ?? []).flatMap((k: any) => (Array.isArray(k.posts) ? k.posts : k.posts ? [k.posts] : []))] as any[];
   if (posts.some((p) => p.status === "processing" || p.status === "published")) {
     throw new HttpError(409, "has_post", "Este criativo já foi publicado ou está em publicação.");
   }
@@ -179,19 +277,38 @@ async function searchLocations(clientId: string, q: string) {
 
 async function updateCreative(id: string, req: Request) {
   const b = await readJson(req);
+  const { data: cur } = await db.from("creatives")
+    .select("id, status, kind, format, platforms, caption, hashtags, link_url, location_id, location_name, auto_music, opt_story, opt_caption, opt_location")
+    .eq("id", id).is("story_of", null).maybeSingle();
+  if (!cur) throw new HttpError(404, "not_found", "Criativo não encontrado.");
+  if (cur.status !== "pending") throw new HttpError(409, "not_pending", "Só é possível editar criativos que ainda estão na fila.");
   const patch: Record<string, unknown> = {};
   if ("caption" in b) patch.caption = str(b.caption, 2200);
   if ("hashtags" in b) patch.hashtags = str(b.hashtags, 600);
   if ("title" in b) patch.title = str(b.title, 120) || null;
+  if ("link" in b || "link_url" in b) {
+    const link = str(b.link ?? b.link_url, 500);
+    if (link && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(link)) throw new HttpError(400, "bad_link", "Link inválido (use um endereço completo, com https://).");
+    patch.link_url = link || null;
+  }
+  if ("location_id" in b) {
+    const loc = str(b.location_id, 40);
+    if (loc && !/^\d+$/.test(loc)) throw new HttpError(400, "bad_location", "location_id deve ser o ID numérico da Página do local.");
+    patch.location_id = loc || null;
+    patch.location_name = loc ? (str(b.location_name, 120) || null) : null;
+  }
   if ("suggested_at" in b) {
     const d = b.suggested_at ? new Date(String(b.suggested_at)) : null;
     if (d && isNaN(d.getTime())) throw new HttpError(400, "bad_date", "Data inválida.");
     patch.suggested_at = d ? d.toISOString() : null;
   }
+  const next = { ...cur, ...patch };
+  if (composeCaption(next as any).length > 2200) throw new HttpError(400, "caption_too_long", "Legenda + link + hashtags passam de 2.200 caracteres.");
+  if (b.options && typeof b.options === "object") Object.assign(patch, optionColumns(normalizeOptions(next as any, b.options)));
   if (!Object.keys(patch).length) throw new HttpError(400, "empty", "Nada para atualizar.");
   const rows = must(await db.from("creatives").update(patch).eq("id", id).eq("status", "pending").select("id")) as unknown[];
   if (!rows?.length) throw new HttpError(409, "not_pending", "Só é possível editar criativos que ainda estão na fila.");
-  return json({ ok: true });
+  return json({ ok: true, options: creativeOptions({ ...next, ...patch } as any) });
 }
 
 async function reopenCreative(id: string) {
@@ -204,7 +321,7 @@ async function reopenCreative(id: string) {
 
 async function retryPost(id: string) {
   const rows = must(await db.from("posts").update({
-    status: "scheduled", attempts: 0, last_error: null, container_id: null, container_created_at: null,
+    status: "scheduled", attempts: 0, last_error: null, last_error_code: null, container_id: null, container_created_at: null,
     scheduled_for: new Date().toISOString(),
   }).eq("id", id).eq("status", "failed").select("id")) as unknown[];
   if (!rows?.length) throw new HttpError(409, "not_failed", "Só posts com falha podem ser reenviados.");
@@ -217,9 +334,17 @@ async function createKey(req: Request) {
   if (!["admin", "ingest"].includes(role)) throw new HttpError(400, "bad_role", "role deve ser admin ou ingest.");
   const name = str(b.name, 60);
   if (!name) throw new HttpError(400, "bad_name", "Dê um nome para a chave.");
-  const key = `srp_${role === "admin" ? "adm" : "ing"}_${randomToken(30)}`;
-  must(await db.from("api_keys").insert({ name, role, key_hash: await sha256Hex(key) }));
-  return json({ key }, 201);
+  // Chave por cliente: so envia criativos para a fila daquele cliente.
+  let clientId: string | null = null;
+  if (b.client_id) {
+    if (role !== "ingest" || !isUuid(b.client_id)) throw new HttpError(400, "bad_client", "Só chaves de ingestão podem ser presas a um cliente.");
+    const { data: c } = await db.from("clients").select("id").eq("id", b.client_id).maybeSingle();
+    if (!c) throw new HttpError(404, "not_found", "Cliente não encontrado.");
+    clientId = c.id;
+  }
+  const key = `srp_${role === "admin" ? "adm" : clientId ? "cli" : "ing"}_${randomToken(30)}`;
+  must(await db.from("api_keys").insert({ name, role, key_hash: await sha256Hex(key), client_id: clientId }));
+  return json({ key, client_id: clientId }, 201);
 }
 
 export async function adminRoutes(req: Request, path: string): Promise<Response> {
@@ -232,6 +357,9 @@ export async function adminRoutes(req: Request, path: string): Promise<Response>
   if (seg[0] === "clients" && isUuid(seg[1])) {
     if (m === "GET" && seg.length === 2) return clientDetail(seg[1]);
     if (m === "PATCH" && seg.length === 2) return updateClient(seg[1], req);
+    if (m === "DELETE" && seg.length === 2) return deleteClient(seg[1]);
+    if (m === "POST" && seg[2] === "sim-account") return simAccount(seg[1], req);
+    if (m === "GET" && seg[2] === "publishing") return publishingUsage(seg[1]);
     if (m === "POST" && seg[2] === "links") return createLink(seg[1], req);
     if (m === "GET" && seg[2] === "places") return searchLocations(seg[1], str(new URL(req.url).searchParams.get("q"), 80));
   }
@@ -255,8 +383,9 @@ export async function adminRoutes(req: Request, path: string): Promise<Response>
     if (m === "POST" && seg[2] === "reopen") return reopenCreative(seg[1]);
   }
   if (m === "POST" && seg[0] === "posts" && isUuid(seg[1]) && seg[2] === "retry") return retryPost(seg[1]);
+  if (m === "PATCH" && path === "/settings") return updateSettings(req);
   if (m === "GET" && path === "/keys") {
-    return json({ keys: must(await db.from("api_keys").select("id, name, role, created_at, last_used_at, revoked_at").order("created_at")), current: me.id });
+    return json({ keys: must(await db.from("api_keys").select("id, name, role, client_id, created_at, last_used_at, revoked_at").order("created_at")), current: me.id });
   }
   if (m === "POST" && path === "/keys") return createKey(req);
   if (m === "POST" && seg[0] === "keys" && isUuid(seg[1]) && seg[2] === "revoke") {
@@ -267,15 +396,65 @@ export async function adminRoutes(req: Request, path: string): Promise<Response>
   throw new HttpError(404, "not_found", "Rota não encontrada.");
 }
 
-// Ingestao por API: o n8n ou o agente gerador envia criativos direto para a fila do cliente.
+// Ingestao por API: o agente de IA (ou o n8n) envia criativo, legenda, link e opcoes direto para a fila do cliente.
+// Com chave por cliente (x-api-key), o cliente vem da propria chave; com chave geral, vem de client_slug.
 export async function ingestRoutes(req: Request, path: string): Promise<Response> {
-  await authKey(req, ["ingest", "admin"]);
-  if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "Use POST.");
-  const b = await readJson(req);
-  const slug = str(b.client_slug, 60);
-  const { data: client } = await db.from("clients").select("id").eq("slug", slug).maybeSingle();
-  if (!client) throw new HttpError(404, "client_not_found", `Cliente "${slug}" não encontrado.`);
-  if (path === "/upload-url") return json(await signedUpload(client.id, str(b.filename, 200), str(b.content_type, 60)));
-  if (path === "/creatives") return json(await createCreatives(client.id, b.items, "api"), 201);
+  const key = await authKey(req, ["ingest", "admin"]);
+  const url = new URL(req.url);
+  const b = req.method === "POST" ? await readJson(req) : {} as Record<string, unknown>;
+  const slug = str(b.client_slug ?? url.searchParams.get("client_slug"), 60);
+  let client: { id: string; slug: string; name: string } | null = null;
+  if (key.client_id) {
+    client = (await db.from("clients").select("id, slug, name").eq("id", key.client_id).maybeSingle()).data;
+    if (!client) throw new HttpError(404, "client_not_found", "O cliente desta chave não existe mais.");
+    if (slug && slug !== client.slug) throw new HttpError(403, "wrong_client", "Esta chave só envia criativos para o cliente dela.");
+  } else {
+    if (!slug) throw new HttpError(400, "client_required", "Informe client_slug ou use uma chave do cliente.");
+    client = (await db.from("clients").select("id, slug, name").eq("slug", slug).maybeSingle()).data;
+    if (!client) throw new HttpError(404, "client_not_found", `Cliente "${slug}" não encontrado.`);
+  }
+  const m = req.method;
+  if (m === "POST" && path === "/upload-url") return json(await signedUpload(client.id, str(b.filename, 200), str(b.content_type, 60)));
+  if (m === "POST" && path === "/creatives") {
+    const res = await createCreatives(client.id, b.items, "api");
+    return json({ client: client.slug, ...res }, 201);
+  }
+  // Situacao dos criativos enviados: decisao do cliente, pedido de ajuste e andamento de cada publicacao.
+  if (m === "GET" && path === "/creatives") {
+    const fields = `id, external_ref, kind, format, title, status, decision_comment, decided_at, suggested_at, link_url, opt_story, opt_caption, auto_music, opt_location, created_at,
+      posts!posts_creative_id_fkey ( platform, status, scheduled_for, published_at, permalink, last_error, last_error_code )`;
+    let q = db.from("creatives").select(fields).eq("client_id", client.id).is("story_of", null).order("created_at", { ascending: false }).limit(100);
+    const ref = str(url.searchParams.get("external_ref"), 200), status = str(url.searchParams.get("status"), 12);
+    if (ref) q = q.eq("external_ref", ref);
+    if (status) q = q.eq("status", status);
+    const rows = must(await q) ?? [];
+    const { data: kids } = await db.from("creatives").select(`story_of, posts!posts_creative_id_fkey ( platform, status, scheduled_for, published_at, permalink, last_error, last_error_code )`)
+      .eq("client_id", client.id).not("story_of", "is", null).in("story_of", rows.map((r: any) => r.id).slice(0, 100));
+    const list = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []) as any[];
+    const post = (p: any, placement: string) => ({
+      platform: p.platform, placement, status: p.status, scheduled_for: p.scheduled_for, published_at: p.published_at, permalink: p.permalink,
+      error: p.status === "published" ? null : friendlyError(p.last_error_code, p.last_error),
+    });
+    return json({
+      client: client.slug,
+      items: rows.map((r: any) => ({
+        id: r.id, external_ref: r.external_ref, kind: r.kind, format: r.format, title: r.title, status: r.status,
+        adjust_request: r.status === "adjust" ? r.decision_comment : null, decided_at: r.decided_at, suggested_at: r.suggested_at, link: r.link_url,
+        options: { story: r.opt_story, caption: r.opt_caption, music: r.auto_music, location: r.opt_location },
+        posts: [
+          ...list(r.posts).map((p) => post(p, r.format === "story" ? "story" : "main")),
+          ...(kids ?? []).filter((k: any) => k.story_of === r.id).flatMap((k: any) => list(k.posts).map((p) => post(p, "story"))),
+        ],
+      })),
+    });
+  }
+  // Quem sou eu: confere a chave e mostra para onde os criativos vao.
+  if (m === "GET" && path === "/me") {
+    const [{ data: agent }, { data: accs }] = await Promise.all([
+      db.from("agents").select("name, platforms, post_times, posts_per_week").eq("client_id", client.id).maybeSingle(),
+      db.from("social_accounts").select("platform, username, status, simulated").eq("client_id", client.id),
+    ]);
+    return json({ client: { slug: client.slug, name: client.name }, key_scope: key.client_id ? "cliente" : "geral", agent, accounts: accs ?? [], pacing: await pacing() });
+  }
   throw new HttpError(404, "not_found", "Rota não encontrada.");
 }
