@@ -75,7 +75,7 @@ Preparação: um cliente de teste criado no painel, com um Reel, uma foto e um c
 5. Aba Posts. Mostrar os itens como "Agendado" e, depois da publicação, "Publicado". Legenda: "Approved posts are published to the client's Instagram account with instagram_content_publish."
 6. Clicar em **Abrir** e mostrar o post no Instagram, com a mesma legenda.
 
-Para não esperar o horário agendado, deixe os criativos sem data sugerida e ajuste o horário do agente para o minuto seguinte, ou edite a data no painel. O publicador roda a cada 5 minutos.
+Para não esperar o horário agendado, deixe os criativos sem data sugerida e ajuste o horário do agente para o minuto seguinte, ou edite a data no painel. O publicador roda a cada minuto.
 
 ### Cena 3: métricas (cobre `instagram_manage_insights`)
 1. Aba Posts, cerca de 1 hora depois da publicação. Mostrar os totais e os números de cada post. Legenda: "We read insights of the posts we published and show them to the client."

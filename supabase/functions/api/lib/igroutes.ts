@@ -35,18 +35,21 @@ async function callback(req: Request): Promise<Response> {
         return back({ ig: "erro", motivo: "permissoes" });
       }
     }
-    const accounts = await ig.listInstagramAccounts(tok.token);
+    const { accounts, trace } = await ig.listInstagramAccounts(tok.token);
     if (!accounts.length) {
-      await note("sem_conta", "Nenhuma Página com conta profissional do Instagram foi liberada no login.");
+      await note("sem_conta", `Nenhuma conta profissional do Instagram veio no login. Consultas: ${trace}`);
       return back({ ig: "erro", motivo: "sem_conta" });
     }
     // Em reconexao, mantem a mesma conta; senao usa a primeira liberada.
     const { data: prev } = await db.from("social_accounts").select("external_id").eq("client_id", st.client_id).eq("platform", "instagram").maybeSingle();
     const chosen = accounts.find((a) => a.igId === prev?.external_id) ?? accounts[0];
+    // Com Pagina, publica com o token da Pagina. Sem Pagina (conta concedida direto pelo portfolio empresarial),
+    // publica pelo ID da conta do Instagram com o proprio token recebido no login.
     const token = chosen.pageToken ?? tok.token;
     // Token de Pagina derivado de token duravel nao expira; caso contrario vale o prazo do token de origem.
     const expiresAt = chosen.pageToken && tok.durable ? null
       : tok.expiresIn ? new Date(Date.now() + tok.expiresIn * 1000).toISOString() : null;
+    await db.from("settings").delete().eq("key", "ig_last_oauth_error");
     if (!tok.durable) await note("token_curto", "O token recebido é de curta duração. Confira o tipo de token da configuração de login.");
 
     const now = new Date().toISOString();
@@ -62,7 +65,12 @@ async function callback(req: Request): Promise<Response> {
     must(await db.rpc("ig_token_store", { p_account_id: acc.id, p_token: token }));
     await db.from("posts").update({ social_account_id: acc.id })
       .eq("client_id", st.client_id).eq("platform", "instagram").in("status", ["scheduled", "failed"]);
-    return back(accounts.length > 1 ? { ig: "ok", contas: String(accounts.length) } : { ig: "ok" });
+    // Reconexao: os posts que ficaram parados voltam para a fila, redistribuidos para nao sairem todos de uma vez.
+    const { data: moved } = await db.rpc("respread_overdue", { p_client_id: st.client_id, p_platform: "instagram" });
+    const params: Record<string, string> = { ig: "ok" };
+    if (accounts.length > 1) params.contas = String(accounts.length);
+    if (typeof moved === "number" && moved > 0) params.atrasados = String(moved);
+    return back(params);
   } catch (e) {
     await note("excecao", e instanceof Error ? e.message : String(e));
     return back({ ig: "erro", motivo: e instanceof ig.IgError ? "instagram" : "interno" });

@@ -87,6 +87,7 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
 <header class="top"><div class="wrap">
   <b>Sr. Post <span class="muted" style="font-size:0.8rem;font-family:var(--body);font-weight:400">painel do time</span></b>
   <nav id="navbar" hidden>
+    <a class="btn ghost sm" href="agentes.html">Agentes</a>
     <button class="btn ghost sm" type="button" id="navClients">Clientes</button>
     <button class="btn ghost sm" type="button" id="navConfig">Configuração</button>
     <button class="btn ghost sm" type="button" id="navOut">Sair</button>
@@ -152,7 +153,9 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     var out = [];
     ["instagram", "tiktok"].forEach(function (p) {
       var a = (list || []).filter(function (x) { return x.platform === p; })[0];
-      out.push(el("span", { class: "pill" + (a && a.status === "connected" ? " ok" : a ? " no" : ""), text: a && a.status === "connected" ? NET[p] + ": @" + (a.username || "conta") : a ? NET[p] + " expirado" : "Sem " + NET[p] }));
+      var paused = a && a.cooldown_until && new Date(a.cooldown_until) > new Date();
+      out.push(el("span", { class: "pill" + (a && a.status === "connected" ? (paused ? " wait" : " ok") : a ? " no" : ""), text: a && a.status === "connected"
+        ? NET[p] + ": " + (a.simulated ? "conta simulada" : "@" + (a.username || "conta")) + (paused ? " (em pausa até " + date(a.cooldown_until) + ")" : "") : a ? NET[p] + " expirado" : "Sem " + NET[p] }));
     });
     return out;
   }
@@ -247,13 +250,37 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
     var st = p.status === "published" ? ["Publicado " + date(p.published_at), "pill ok"] : p.status === "failed" ? ["Falhou", "pill no"]
       : p.status === "processing" ? ["Publicando", "pill wait"] : ["Agendado " + date(p.scheduled_for), "pill"];
     var m = p.metrics;
-    return el("div", { class: "meta" }, el("b", { style: "color:var(--ink)", text: NET[p.platform] || p.platform }), el("span", { class: st[1], text: st[0] }),
+    return el("div", { class: "meta" }, el("b", { style: "color:var(--ink)", text: (NET[p.platform] || p.platform) + (p.placement === "story" ? " · Story" : "") }), el("span", { class: st[1], text: st[0] }),
       p.permalink ? el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "abrir" }) : null,
       m ? el("span", { text: n(m.views) + " views · " + n(m.likes) + " curtidas · " + n(m.comments) + " coment. · " + n(m.shares) + " compart." }) : null,
-      p.last_error ? el("span", { style: "color:var(--error)", text: p.last_error }) : null,
+      p.last_error && p.status !== "published" && !(p.history || []).length ? el("span", { style: "color:var(--error)", text: p.last_error }) : null,
       p.status === "failed" ? el("button", { class: "btn sm", type: "button", text: "Tentar de novo", onclick: function () { api("POST", "/admin/posts/" + p.id + "/retry").then(function () { toast("Reenviado."); loadClient(currentClient); }).catch(fail); } }) : null);
   }
   var currentClient = null;
+  // Opcoes do criativo. Travadas mostram o motivo (o que a API da rede nao aceita).
+  var OPTS = [["story", "Subir também no story"], ["caption", "Com legenda"], ["music", "Com música"], ["location", "Com localização"]];
+  function optionsBox(cr, editable, onChange) {
+    var box = el("div", { class: "note", style: "display:grid;gap:4px" });
+    OPTS.forEach(function (o) {
+      var st = cr.options && cr.options[o[0]]; if (!st) return;
+      var input = el("input", { type: "checkbox", checked: !!st.on, disabled: !st.allowed || !editable });
+      input.addEventListener("change", function () { var b = {}; b[o[0]] = input.checked; onChange(b, input); });
+      box.appendChild(el("label", { class: "check", style: st.allowed ? "" : "color:var(--muted)" }, input,
+        el("span", null, el("b", { text: o[1] + ": " + (st.on ? "sim" : "não") }), st.allowed ? (st.note ? " · " + st.note : "") : " · indisponível: " + st.reason)));
+    });
+    return box;
+  }
+  // Historico de tentativas de publicacao: nada e apagado, nem depois que o post sai.
+  var OUTCOME = { ok: "publicado", retry: "falhou, nova tentativa agendada", failed: "falhou, sem novas tentativas", reconnect: "conta precisa ser reconectada" };
+  function historyBox(p) {
+    var h = p.history || [];
+    if (!h.length || (h.length === 1 && h[0].outcome === "ok")) return null;
+    var box = el("div", { class: "note", style: "display:grid;gap:3px" });
+    h.forEach(function (a) {
+      box.appendChild(el("span", { text: "Tentativa " + a.attempt + " · " + date(a.created_at) + " · " + (OUTCOME[a.outcome] || a.outcome) + (a.error_code ? " · código " + a.error_code : "") + (a.error ? " · " + a.error : "") }));
+    });
+    return box;
+  }
   function renderClient(d) {
     var c = d.client, id = c.id; app.textContent = ""; currentClient = id;
     var accts = c.accounts || (c.instagram ? [Object.assign({ platform: "instagram" }, c.instagram)] : []);
@@ -295,7 +322,9 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
         format: el("select", null), when: el("input", { type: "datetime-local" }), ai: el("input", { type: "checkbox" }),
         locId: el("input", { type: "text", placeholder: "ID da Página do local (só números)", inputmode: "numeric" }),
         locName: el("input", { type: "text", placeholder: "Nome do local (aparece para o cliente)" }),
-        audio: el("input", { type: "text", placeholder: "Ex.: Som original - Café Aurora" }), music: el("input", { type: "checkbox" }) };
+        audio: el("input", { type: "text", placeholder: "Ex.: Som original - Café Aurora" }), music: el("input", { type: "checkbox" }),
+        link: el("input", { type: "url", placeholder: "https://... (vai no fim da legenda, como texto)" }),
+        story: el("input", { type: "checkbox" }), withCaption: el("input", { type: "checkbox", checked: true }), withLocation: el("input", { type: "checkbox", checked: true }) };
       (carousel ? [["feed", "Carrossel no feed"]] : isVideo ? [["reel", "Reel"], ["story", "Story"]] : [["feed", "Post no feed"], ["story", "Story"]])
         .forEach(function (o) { d.format.appendChild(el("option", { value: o[0], text: o[1] })); });
       var total = list.reduce(function (a, f) { return a + f.size; }, 0), tooBig = list.some(function (f) { return f.size > MAX_BYTES; });
@@ -318,13 +347,18 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
         tooBig ? el("div", { class: "notice bad", text: "Há arquivo acima de 50 MB. Comprima antes de enviar." }) : null,
         el("div", { class: "grid" }, field("Título", d.title), field("Formato", d.format), field("Data sugerida (horário deste computador; vazio = próximo horário livre)", d.when),
           el("div", { class: "f" }, el("span", { class: "label", text: "Publicar em" }), nets.node),
-          field("Legenda", d.caption, true), field("Hashtags", d.hashtags, true),
+          field("Legenda", d.caption, true), field("Link do post", d.link, true), field("Hashtags", d.hashtags, true),
           field("Local: nome", d.locName), field("Local: ID da Página (Instagram)", d.locId),
           el("div", { class: "f", style: "align-content:end;justify-items:start" }, searchBtn),
           isVideo ? field("Nome do áudio do Reel (só renomeia o áudio original)", d.audio) : null),
         places,
         el("label", { class: "check" }, d.ai, "Conteúdo gerado por IA (marca o post como tal nas redes)"),
-        isVideo ? null : el("label", { class: "check" }, d.music, "TikTok: adicionar música automática nas fotos"));
+        el("span", { class: "label", text: "Opções (o cliente pode mudar antes de aprovar)" }),
+        el("label", { class: "check" }, d.story, "Subir também no story do Instagram (sai sem legenda, link e local; não vale para TikTok nem para criativo que já é story)"),
+        el("label", { class: "check" }, d.withCaption, "Com legenda (legenda, link e hashtags; story não leva legenda pela API)"),
+        isVideo ? el("p", { class: "muted", text: "Com música: indisponível em vídeo. A API do Instagram não escolhe música da biblioteca; a música precisa estar no arquivo." })
+          : el("label", { class: "check" }, d.music, "Com música (só TikTok, em posts de foto: música automática do provedor; o Instagram não aceita música pela API)"),
+        el("label", { class: "check" }, d.withLocation, "Com localização (só Instagram; usa o local informado acima)"));
       d.title.value = (carousel ? "Carrossel" : list[0].name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ")).slice(0, 80);
       drafts.appendChild(box); pending.push(d); sendBtn.disabled = false;
     }
@@ -356,7 +390,8 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
           sendBtn.textContent = "Enviando " + (done + 1) + " de " + total + "...";
           return d.files.reduce(function (c2, f) { return c2.then(function (acc) { return sendFile(f).then(function (m) { acc.push(m); return acc; }); }); }, Promise.resolve([])).then(function (media) {
             var item = { format: d.format.value, title: d.title.value, caption: d.caption.value, hashtags: d.hashtags.value, platforms: d.nets.value(),
-              ai_generated: d.ai.checked, auto_music: d.music.checked, revision_of: d.revisionOf || undefined,
+              ai_generated: d.ai.checked, revision_of: d.revisionOf || undefined, link: d.link.value.trim() || undefined,
+              options: { story: d.story.checked, caption: d.withCaption.checked, music: d.music.checked, location: d.withLocation.checked },
               location_id: d.locId.value.trim() || undefined, location_name: d.locName.value.trim() || undefined, audio_name: d.audio.value.trim() || undefined,
               suggested_at: d.when.value ? new Date(d.when.value).toISOString() : null };
             if (d.carousel) item.media = media; else { item.kind = media[0].kind; item.media_path = media[0].media_path; item.thumb_path = media[0].thumb_path; }
@@ -386,8 +421,13 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
           el("span", { text: "enviado " + date(cr.created_at) + (cr.source === "api" ? " via API" : "") }),
           cr.suggested_at && cr.status === "pending" ? el("span", { text: "sugerido " + date(cr.suggested_at) }) : null,
           cr.location_name ? el("span", { text: "local: " + cr.location_name }) : null, cr.ai_generated ? el("span", { text: "IA" }) : null));
+      if (cr.link_url) body.appendChild(el("div", { class: "meta" }, el("span", null, "Link: ", el("a", { href: cr.link_url, target: "_blank", rel: "noopener", text: cr.link_url }))));
       if (cr.decision_comment) body.appendChild(el("p", { class: "note", text: "Cliente: " + cr.decision_comment }));
-      ps.forEach(function (p) { body.appendChild(postLine(p)); });
+      if (cr.options) body.appendChild(optionsBox(cr, cr.status === "pending", function (change, input) {
+        api("PATCH", "/admin/creatives/" + cr.id, { options: change }).then(function () { toast("Opção atualizada."); loadClient(id); })
+          .catch(function (e) { input.checked = !input.checked; fail(e); });
+      }));
+      ps.forEach(function (p) { body.appendChild(postLine(p)); var h = historyBox(p); if (h) body.appendChild(h); });
       var acts = el("div", { class: "side" });
       acts.appendChild(el("a", { class: "btn ghost sm", href: cr.media_url, target: "_blank", rel: "noopener", text: "Abrir mídia" }));
       if (cr.status === "adjust" || cr.status === "rejected") {
@@ -410,6 +450,53 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
       list.appendChild(el("div", { class: "creative" }, thumb, body));
     });
     app.appendChild(el("section", { class: "panel" }, el("h2", { text: "Criativos (" + d.creatives.length + ")" }), list));
+
+    // chave do agente para este cliente
+    var keyOut = el("div", { class: "kv" }), keyName = el("input", { type: "text", placeholder: "Ex.: Agente de IA do " + c.name });
+    var keyList = el("div", { class: "rows" });
+    (d.keys || []).forEach(function (k) {
+      keyList.appendChild(el("div", { class: "row" },
+        el("span", { class: "main" }, el("b", { text: k.name }), el("span", { class: "muted", text: "Criada " + date(k.created_at) + (k.last_used_at ? " · último uso " + date(k.last_used_at) : " · nunca usada") })),
+        el("span", { class: "side" }, k.revoked_at ? el("span", { class: "pill no", text: "Revogada" })
+          : el("button", { class: "btn danger sm", type: "button", text: "Revogar", onclick: function () { api("POST", "/admin/keys/" + k.id + "/revoke").then(function () { toast("Chave revogada."); loadClient(id); }).catch(fail); } }))));
+    });
+    app.appendChild(el("section", { class: "panel", id: "agentKeyPanel" }, el("h2", { text: "Entrada do agente (chave deste cliente)" }),
+      el("p", { class: "muted", text: "Com esta chave o agente de IA envia criativo, legenda, link e opções direto para a fila deste cliente, e só dele. A chave completa aparece uma vez. Documentação: docs/AGENTE.md no repositório." }),
+      el("div", { class: "grid" }, field("Nome da chave", keyName),
+        el("div", { class: "f", style: "align-content:end;justify-items:start" }, el("button", { class: "btn", type: "button", text: "Gerar chave do cliente", onclick: function () {
+          api("POST", "/admin/keys", { name: keyName.value || ("Agente " + c.name), role: "ingest", client_id: id }).then(function (r) {
+            keyOut.textContent = ""; keyOut.appendChild(el("div", { class: "notice" }, el("span", { class: "label", text: "Chave criada (copie agora)" }), el("code", { text: r.key }), copyBtn(r.key)));
+            keyOut.appendChild(el("div", null, el("span", { class: "label", text: "Endereço" }), el("code", { text: "POST " + API + "/ingest/creatives  (cabeçalho x-api-key)" })));
+          }).catch(fail);
+        } }))), keyOut, keyList));
+
+    // ritmo de publicacao e limite da rede
+    var paceBox = el("div", { class: "kv" }, el("p", { class: "muted", text: "Consultando..." }));
+    var simBtns = el("div", { class: "side" });
+    app.appendChild(el("section", { class: "panel", id: "pacePanel" }, el("h2", { text: "Ritmo de publicação" }),
+      el("p", { class: "muted", text: "O publicador solta no máximo um post por conta a cada ciclo, respeita o intervalo mínimo e o teto diário do Sr. Post e confere o limite informado pela Meta antes de cada publicação." }),
+      paceBox, c.is_demo ? el("p", { class: "muted", text: "Cliente de demonstração: a conta simulada percorre o fluxo inteiro (fila, envio, publicado ou falha) sem chamar nenhuma rede." }) : null, c.is_demo ? simBtns : null));
+    api("GET", "/admin/clients/" + id + "/publishing").then(function (u) {
+      paceBox.textContent = "";
+      paceBox.appendChild(el("div", null, el("span", { class: "label", text: "Regra do Sr. Post" }), el("span", { text: "Intervalo mínimo de " + u.pacing.min_gap_minutes + " min entre publicações da mesma conta · teto de " + u.pacing.daily_cap + " publicações por conta em 24 horas" })));
+      Object.keys(u.networks).forEach(function (net) {
+        var x = u.networks[net], q = x.network_quota;
+        var txt = (x.simulated ? "Conta simulada · " : "") + x.published_24h + " publicações pelo Sr. Post nas últimas 24 horas"
+          + (q ? " · limite informado pela Meta: " + q.used + " de " + q.total + " em " + Math.round(q.windowSeconds / 3600) + " horas" : x.network_quota_error ? " · a Meta não respondeu a consulta de limite: " + x.network_quota_error : "")
+          + (x.cooldown_until && new Date(x.cooldown_until) > new Date() ? " · em pausa até " + date(x.cooldown_until) : "")
+          + (x.next_allowed_at ? " · pode publicar de novo a partir de " + date(x.next_allowed_at) : "");
+        paceBox.appendChild(el("div", null, el("span", { class: "label", text: NET[net] || net }), el("span", { text: txt })));
+      });
+      if (!Object.keys(u.networks).length) paceBox.appendChild(el("p", { class: "muted", text: "Nenhuma conta conectada." }));
+    }).catch(function (e) { paceBox.textContent = ""; paceBox.appendChild(el("p", { class: "muted", text: e.message })); });
+    if (c.is_demo) {
+      [["instagram", "ok", "Ativar Instagram simulado"], ["tiktok", "ok", "Ativar TikTok simulado"], ["instagram", "falha", "Simular falha no Instagram"],
+        ["instagram", "remover", "Remover Instagram simulado"], ["tiktok", "remover", "Remover TikTok simulado"]].forEach(function (b) {
+        simBtns.appendChild(el("button", { class: "btn ghost sm", type: "button", text: b[2], onclick: function () {
+          api("POST", "/admin/clients/" + id + "/sim-account", { platform: b[0], mode: b[1] }).then(function () { toast("Conta simulada atualizada."); loadClient(id); }).catch(fail);
+        } }));
+      });
+    }
 
     // agente
     var nm = el("input", { type: "text", value: c.name }), sg = el("input", { type: "text", value: c.segment || "" });
@@ -489,14 +576,23 @@ code, .mono { font-family: var(--body); font-size: 0.8rem; padding: 6px 10px; bo
         kv("Política de Privacidade (App Review)", cfg.portal_url + "privacidade.html"), kv("Termos de Uso", cfg.portal_url + "termos.html"),
         kv("Instruções de exclusão de dados", cfg.portal_url + "exclusao-de-dados.html")),
       el("p", { class: "muted", text: w ? "Última execução do publicador: " + date(w.at) + " · " + w.published + " publicados, " + w.metrics + " métricas atualizadas" + (w.errors && w.errors.length ? ", " + w.errors.length + " erro(s): " + w.errors.slice(0, 3).join(" | ") : ", sem erros") + "."
-        : "O publicador ainda não rodou. Ele executa a cada 5 minutos." })));
+        : "O publicador ainda não rodou. Ele executa a cada minuto." })));
+
+    var gap = el("input", { type: "number", min: "0", max: "1440", value: String(cfg.pacing ? cfg.pacing.min_gap_minutes : 15) });
+    var cap = el("input", { type: "number", min: "1", max: "50", value: String(cfg.pacing ? cfg.pacing.daily_cap : 12) });
+    app.appendChild(el("section", { class: "panel", id: "paceConfig" }, el("h2", { text: "Ritmo de publicação (todas as contas)" }),
+      el("p", { class: "muted", text: "Regra própria do Sr. Post para não disparar o filtro de spam das redes. A Meta documenta só um teto de publicações por conta em 24 horas (o publicador consulta o número que a API informa para cada conta); o intervalo entre posts é uma escolha conservadora nossa. Depois de uma recusa por suspeita de spam, a conta entra em pausa de 1 hora, que dobra a cada nova recusa (até 24 horas)." }),
+      el("div", { class: "grid" }, field("Intervalo mínimo entre publicações da mesma conta (minutos)", gap), field("Teto de publicações por conta em 24 horas", cap),
+        el("div", { class: "f", style: "align-content:end;justify-items:start" }, el("button", { class: "btn", type: "button", text: "Salvar ritmo", onclick: function () {
+          api("PATCH", "/admin/settings", { publish_min_gap_minutes: Number(gap.value), publish_daily_cap: Number(cap.value) }).then(function () { toast("Ritmo salvo."); }).catch(fail);
+        } })))));
 
     var out = el("div", { class: "kv" }), name = el("input", { type: "text", placeholder: "Ex.: n8n produção" });
     var role = el("select", null, el("option", { value: "ingest", text: "Ingestão (n8n, agente gerador)" }), el("option", { value: "admin", text: "Painel (acesso total)" }));
     var list = el("div", { class: "rows" });
     keys.keys.forEach(function (k) {
       list.appendChild(el("div", { class: "row" },
-        el("span", { class: "main" }, el("b", { text: k.name + (k.id === keys.current ? " (em uso agora)" : "") }), el("span", { class: "muted", text: (k.role === "admin" ? "Painel" : "Ingestão") + " · criada " + date(k.created_at) + (k.last_used_at ? " · último uso " + date(k.last_used_at) : " · nunca usada") })),
+        el("span", { class: "main" }, el("b", { text: k.name + (k.id === keys.current ? " (em uso agora)" : "") }), el("span", { class: "muted", text: (k.role === "admin" ? "Painel" : k.client_id ? "Ingestão de um cliente" : "Ingestão (todos os clientes)") + " · criada " + date(k.created_at) + (k.last_used_at ? " · último uso " + date(k.last_used_at) : " · nunca usada") })),
         el("span", { class: "side" }, k.revoked_at ? el("span", { class: "pill no", text: "Revogada" }) : k.id === keys.current ? null
           : el("button", { class: "btn danger sm", type: "button", text: "Revogar", onclick: function () { api("POST", "/admin/keys/" + k.id + "/revoke").then(function () { toast("Chave revogada."); loadConfig(); }).catch(fail); } }))));
     });

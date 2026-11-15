@@ -61,6 +61,17 @@ img, video { display: block; max-width: 100%; }
 .tab[aria-selected="true"] { background: var(--ink); color: #FFF; }
 .badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--butter); color: var(--ink); font-family: var(--body); font-weight: 700; font-size: 0.72rem; line-height: 20px; text-align: center; }
 
+.alert { background: var(--error-soft); border-bottom: 1.5px solid var(--ink); font-size: 0.88rem; }
+.alert .wrap { display: grid; gap: 8px; padding-block: 10px; }
+.alert .line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.alert .line span { flex: 1 1 240px; min-width: 0; }
+@media (max-width: 859px) {
+  .alert { font-size: 0.78rem; line-height: 1.35; }
+  .alert .wrap { padding-block: 7px; gap: 6px; }
+  .alert .line { flex-wrap: nowrap; gap: 10px; }
+  .alert .line span { flex: 1 1 auto; }
+  .alert .btn.sm { min-height: 34px; padding: 0 12px; font-size: 0.76rem; flex: none; }
+}
 .demo { background: var(--butter-soft); border-bottom: 1.5px solid var(--ink); font-size: 0.74rem; padding-block: 3px; text-align: center; }
 
 /* Navegacao inferior (celular) */
@@ -133,6 +144,49 @@ main { padding-block: 12px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom
 .copy .facts2 { display: grid; gap: 2px; padding-top: 8px; border-top: 1.5px solid var(--soft); font-size: 0.82rem; color: var(--muted); }
 .copy .facts2 b { color: var(--ink); }
 .keys { display: none; font-size: 0.78rem; color: var(--muted); }
+/* Opcoes do post: story, legenda, musica e local */
+.opts { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.opt { display: grid; justify-items: center; gap: 3px; min-height: 44px; padding: 5px 4px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--card); color: var(--ink); font-family: var(--display); font-weight: 600; font-size: 0.74rem; line-height: 1.1; text-align: center; }
+.opt .sw { position: relative; width: 30px; height: 16px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--card); flex: none; }
+.opt .sw::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); transition: transform 0.12s ease; }
+.opt[aria-checked="true"] { background: var(--sky); }
+.opt[aria-checked="true"] .sw { background: var(--approve); }
+.opt[aria-checked="true"] .sw::after { background: #FFF; transform: translateX(14px); }
+.opt.locked { border-style: dashed; border-color: var(--line); color: var(--muted); background: transparent; }
+.opt.locked .sw { border-color: var(--line); }
+.opt.locked .sw::after { background: var(--line); }
+.opt.locked[aria-checked="true"] .sw { background: var(--muted); border-color: var(--muted); }
+.opt small { display: none; font-family: var(--body, inherit); font-weight: 400; font-size: 0.78rem; line-height: 1.35; color: var(--muted); text-align: left; }
+.optnotes { display: grid; gap: 4px; padding-top: 8px; border-top: 1.5px solid var(--soft); font-size: 0.8rem; color: var(--muted); }
+.optnotes b { color: var(--ink); }
+.copy .linkline { font-size: 0.85rem; overflow-wrap: anywhere; }
+.copy .linkline a { color: var(--blue); }
+.copy p.offcap { color: var(--muted); text-decoration: line-through; }
+/* Andamento */
+.track { margin-bottom: 20px; }
+.trackhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.trackhead h2 { font-size: 1.2rem; }
+.trackhead .live { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); }
+.trackhead .live i { width: 8px; height: 8px; border-radius: 50%; background: #2E9E5B; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+.tgroup { display: grid; gap: 8px; margin-bottom: 14px; }
+.tgroup > .label { margin-top: 2px; }
+.tl { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.ti { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 10px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--card); }
+.ti.is-enviando { background: var(--sky); }
+.ti.is-falhou { border-color: var(--error); background: var(--error-soft); }
+.ti .tt { width: 48px; aspect-ratio: 4 / 5; border-radius: 7px; overflow: hidden; background: var(--ink); border: 0; padding: 0; cursor: pointer; }
+.ti .tt img, .ti .tt video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ti .tb { display: grid; gap: 4px; min-width: 0; }
+.ti h3 { font-size: 0.95rem; overflow-wrap: anywhere; }
+.ti .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.8rem; color: var(--muted); }
+.ti .meta b { font-family: var(--display); color: var(--ink); }
+.ti .why { font-size: 0.82rem; overflow-wrap: anywhere; }
+.ti .why small { display: block; color: var(--muted); font-size: 0.74rem; margin-top: 2px; }
+.ti .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.pill.send { background: var(--butter); }
+.pill.send::before { content: ""; width: 8px; height: 8px; margin-right: 6px; border: 2px solid var(--ink); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.sub { font-family: var(--display); font-weight: 700; font-size: 1.2rem; margin: 4px 0 10px; }
 kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 6px; background: var(--card); font-family: var(--body); font-size: 0.75rem; text-align: center; }
 
 .empty { display: grid; justify-items: center; gap: 12px; padding: 40px 16px; text-align: center; border: 1.5px dashed var(--line); border-radius: 18px; }
@@ -158,7 +212,11 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 1.5px so
 .filter[aria-pressed="true"] { background: var(--ink); color: #FFF; }
 .posts { display: grid; gap: 10px; }
 .post { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 10px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--card); }
-.post .thumb { width: 72px; aspect-ratio: 4 / 5; border-radius: 9px; overflow: hidden; background: var(--ink); }
+.post { cursor: pointer; }
+.post:hover { background: var(--bg); }
+.post .thumb { position: relative; width: 72px; aspect-ratio: 4 / 5; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--ink); cursor: pointer; }
+.post .thumb .zoom { position: absolute; right: 4px; bottom: 4px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: rgba(11, 15, 20, 0.72); color: #FFF; }
+.post .thumb .zoom svg { width: 14px; height: 14px; }
 .post .thumb img, .post .thumb video { width: 100%; height: 100%; object-fit: cover; }
 .post .body { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .post h3 { font-size: 1rem; overflow-wrap: anywhere; }
@@ -206,6 +264,22 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
 .err { color: var(--error); font-size: 0.85rem; }
 .sheetbtns { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- Visualizacao ampliada do post ---------- */
+dialog#viewer { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; }
+.vw { display: grid; align-content: start; min-height: 100%; }
+.vstage { position: relative; display: grid; place-items: center; width: 100%; max-height: 76dvh; background: var(--ink); overflow: hidden; }
+.vstage.r916 { aspect-ratio: 9 / 16; } .vstage.r45 { aspect-ratio: 4 / 5; }
+.vstage .vmedia { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.vstage .dots { top: calc(14px + env(safe-area-inset-top, 0px)); right: 68px; }
+.vclose { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; background: #FFF; color: var(--ink); }
+.vclose svg { width: 20px; height: 20px; }
+.vinfo { display: grid; gap: 14px; align-content: start; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); min-width: 0; }
+.vinfo h2 { font-size: 1.35rem; overflow-wrap: anywhere; padding-right: 8px; }
+.vinfo .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.85rem; color: var(--muted); }
+.vinfo .cap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vinfo .tags { color: var(--blue); font-size: 0.88rem; overflow-wrap: anywhere; }
+.vinfo .count { font-size: 0.8rem; color: var(--muted); }
+
 .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 30; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: #FFF; font-size: 0.85rem; box-shadow: 0 10px 30px -12px rgba(11, 15, 20, 0.6); }
 .toast.bad { background: var(--error); }
 .toast button { border: 0; background: none; color: var(--butter); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap; }
@@ -225,7 +299,13 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   main { padding-block: 28px 56px; }
   .toast { bottom: 24px; }
   #igNotice { display: block; }
-  .review { display: grid; grid-template-columns: auto minmax(0, 420px); grid-template-rows: auto auto 1fr; grid-template-areas: "deck copy" "deck actions" "deck keys"; justify-content: center; column-gap: 40px; row-gap: 18px; }
+  .review { display: grid; grid-template-columns: auto minmax(0, 420px); grid-template-rows: auto auto auto 1fr; grid-template-areas: "deck copy" "deck opts" "deck actions" "deck keys"; justify-content: center; column-gap: 40px; row-gap: 18px; }
+  .opts { grid-area: opts; grid-template-columns: 1fr; gap: 6px; }
+  .opt { grid-template-columns: 34px 78px minmax(0, 1fr); justify-items: start; align-items: center; gap: 10px; min-height: 0; padding: 8px 12px; text-align: left; font-size: 0.85rem; }
+  .opt small { display: block; }
+  .optnotes { display: none; }
+  .ti { grid-template-columns: 56px minmax(0, 1fr); }
+  .ti .tt { width: 56px; }
   .stage { display: contents; }
   .deckwrap { grid-area: deck; display: block; }
   .deck { height: auto; width: min(380px, calc((100dvh - 200px) * 9 / 16)); min-width: 240px; }
@@ -238,8 +318,15 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   .post .thumb { width: 96px; }
   .cols { grid-template-columns: 1.2fr 1fr; align-items: start; }
   dialog { margin: auto; border-bottom: 1.5px solid var(--ink); border-radius: 20px; }
+  dialog#viewer { width: min(1040px, calc(100% - 48px)); height: min(820px, calc(100dvh - 48px)); margin: auto; border: 1.5px solid var(--ink); border-radius: 20px; overflow: hidden; }
+  .vw { position: relative; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr); height: 100%; min-height: 0; align-content: stretch; }
+  .vstage, .vstage.r916, .vstage.r45 { aspect-ratio: auto; height: 100%; max-height: none; min-height: 0; }
+  .vstage .dots { top: 14px; right: 14px; }
+  .vclose { position: absolute; top: 12px; right: 12px; }
+  .vinfo { padding: 22px 64px 24px 24px; overflow-y: auto; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .trackhead .live i, .pill.send::before { animation: none; }
   .card.settle, .card.fly { transition: none; }
   .spin { animation-duration: 2s; }
 }
@@ -257,6 +344,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   </div>
 </header>
 <div class="demo" id="demoBar" hidden>Demonstração com dados de exemplo</div>
+<div class="alert" id="alertBar" role="alert" hidden><div class="wrap" id="alertBody"></div></div>
 
 <main class="wrap" id="main">
   <section class="gate" id="gate">
@@ -270,6 +358,11 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
 
   <section id="view-posts" hidden>
     <div id="postsNotice"></div>
+    <section class="track" aria-labelledby="trackTitle">
+      <div class="trackhead"><h2 id="trackTitle">Andamento</h2><span class="live" id="trackLive" hidden><i aria-hidden="true"></i>atualiza sozinho</span></div>
+      <div id="track" aria-live="polite"></div>
+    </section>
+    <h2 class="sub">Resultados</h2>
     <div class="stats" id="stats"></div>
     <p class="statnote" id="statNote"></p>
     <div class="filters" id="filters" role="group" aria-label="Filtrar posts"></div>
@@ -317,6 +410,14 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   </form>
 </dialog>
 
+<dialog id="viewer" aria-labelledby="viewerTitle">
+  <div class="vw">
+    <button class="vclose" type="button" id="viewerClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="vstage" id="viewerStage"></div>
+    <div class="vinfo" id="viewerInfo"></div>
+  </div>
+</dialog>
+
 <div id="toastHost" aria-live="polite"></div>
 
 <script src="config.js"></script>
@@ -326,7 +427,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   var API = (window.SRPOST && window.SRPOST.api) || "";
   var STORE = "srpost.portal.token";
   var $ = function (id) { return document.getElementById(id); };
-  var S = { token: "", data: null, queue: [], view: "aprovar", library: null, libraryStale: true, filter: "todos", busy: false, total: 0 };
+  var S = { token: "", data: null, queue: [], view: "aprovar", library: null, libraryStale: true, filter: "todos", busy: false, total: 0, progress: null, progressTimer: null, progressBusy: false };
 
   // ---------- utilitarios ----------
   function el(tag, attrs) {
@@ -358,6 +459,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   }
   var ICON = {
     no: "M6 6l12 12|M18 6 6 18", yes: "m5 12.5 4.5 4.5L19 7.5", left: "m14.5 6-6 6 6 6", right: "m9.5 6 6 6-6 6",
+    zoom: "M9 4H4v5|M15 4h5v5|M9 20H4v-5|M15 20h5v-5",
     fix: "M4 20h4l10-10-4-4L4 16v4z|M13.5 6.5l4 4",
     on: "M4 9v6h4l5 4V5L8 9H4z|M16.5 8.5a5 5 0 0 1 0 7", off: "M4 9v6h4l5 4V5L8 9H4z|M17 9.5l4 5|M21 9.5l-4 5",
     done: "m5 12.5 4.5 4.5L19 7.5"
@@ -405,6 +507,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     var host = $("toastHost"); host.textContent = "";
     var t = el("div", { class: "toast" + (opts.bad ? " bad" : "") }, el("span", { text: msg }));
     if (opts.action) t.appendChild(el("button", { type: "button", text: opts.action, onclick: function () { host.textContent = ""; opts.onAction(); } }));
+    if (opts.action2) t.appendChild(el("button", { type: "button", text: opts.action2, onclick: function () { host.textContent = ""; opts.onAction2(); } }));
     host.appendChild(t);
     toastTimer = setTimeout(function () { host.textContent = ""; }, opts.ms || 6000);
   }
@@ -412,7 +515,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
   // ---------- entrada ----------
   function gate(title, text, withForm) {
     var g = $("gate"); g.hidden = false; g.textContent = "";
-    ["view-aprovar", "view-posts", "view-agente", "nav", "tabs", "demoBar"].forEach(function (id) { $(id).hidden = true; });
+    ["view-aprovar", "view-posts", "view-agente", "nav", "tabs", "demoBar", "alertBar"].forEach(function (id) { $(id).hidden = true; });
     g.appendChild(el("h1", { text: title }));
     g.appendChild(el("p", { text: text }));
     if (withForm) {
@@ -437,7 +540,10 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       $("nav").hidden = false; $("tabs").hidden = false;
       document.title = "Sr. Post | " + data.client.name;
       renderAll();
-      show("aprovar");
+      // O link pode abrir direto em uma aba (ex.: ?aba=agente, usado pelo time para pedir a conexao das contas).
+      var aba = new URLSearchParams(location.search).get("aba");
+      show(aba === "agente" || aba === "posts" ? aba : "aprovar");
+      if (aba) history.replaceState(null, "", location.pathname + location.hash);
       afterReturn();
     }).catch(function (e) {
       if (e.status === 401) { store(null); gate("Link de acesso inválido", e.message, true); }
@@ -454,7 +560,12 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     show("agente");
     var net = ig ? "instagram" : "tiktok", acc = accounts()[net].account;
     if ((ig || tt) === "ok") {
-      var many = Number(q.get("contas")) > 1;
+      var many = Number(q.get("contas")) > 1, late = Number(q.get("atrasados")) || 0;
+      if (late && !many) {
+        toast(NET[net] + " reconectado. " + (late === 1 ? "O post que estava parado sai em instantes."
+          : late + " posts que estavam parados voltaram para a fila: o primeiro sai em instantes e os demais nos próximos horários."), { ms: 14000 });
+        return;
+      }
       toast(many ? "Conectamos @" + ((acc && acc.username) || "sua conta") + ". Você liberou mais de uma conta: para usar outra, desconecte e refaça o login marcando só a conta desejada."
         : NET[net] + " conectado. Os posts aprovados já podem ir ao ar.", { ms: many ? 14000 : 6000 });
       return;
@@ -480,19 +591,55 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     document.querySelectorAll("[data-view]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.view === view)); });
     pauseAll();
     if (view === "aprovar") { fit(); playTop(); }
-    if (view === "posts") loadLibrary();
+    if (view === "posts") { loadLibrary(); loadProgress(); } else stopProgress();
     window.scrollTo(0, 0);
   }
   document.querySelectorAll("[data-view]").forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.view); }); });
 
-  function renderAll() { renderBadges(); renderNotice(); renderDeck(); renderAgent(); renderAccounts(); }
+  function renderAll() { renderBadges(); renderAlert(); renderNotice(); renderDeck(); renderAgent(); renderAccounts(); }
+  // Redes que precisam de acao do cliente: conexao expirada ou removida, ou posts aprovados parados sem conta.
+  function alerted() {
+    var acc = accounts();
+    return ["instagram", "tiktok"].filter(function (net) {
+      var st = acc[net];
+      if (!st || st.connected || !st.available) return false;
+      return (st.account && st.account.status === "expired") || (st.waiting || 0) > 0;
+    });
+  }
+  // Um clique leva direto para a tela de autorizacao da rede.
+  function startConnect(net, btn, short) {
+    var txt = btn.textContent;
+    btn.disabled = true; btn.textContent = short ? "Abrindo..." : CONNECT[net].opening;
+    api("POST", CONNECT[net].start).then(function (r) { location.href = r.authorize_url; })
+      .catch(function (e) { btn.disabled = false; btn.textContent = txt; toast(e.message, { bad: true }); });
+  }
+  // Aviso fixo no topo, em todas as abas, enquanto uma conta precisar ser reconectada.
+  function renderAlert() {
+    var bar = $("alertBar"), body = $("alertBody"), list = alerted(), acc = accounts();
+    body.textContent = ""; bar.hidden = !list.length;
+    list.forEach(function (net) {
+      var st = acc[net], expired = st.account && st.account.status === "expired", w = st.waiting || 0;
+      var text = expired ? "O " + NET[net] + (st.account.username ? " (@" + st.account.username + ")" : "") + " precisa ser reconectado"
+        : "O " + NET[net] + " não está conectado";
+      text += w ? ". " + (w === 1 ? "1 post aprovado está parado." : w + " posts aprovados estão parados.") : " para o agente voltar a publicar.";
+      var btn = el("button", { class: "btn sm", type: "button", text: mobile.matches ? (expired ? "Reconectar" : "Conectar") : (expired ? "Reconectar " : "Conectar ") + NET[net] });
+      btn.setAttribute("aria-label", (expired ? "Reconectar " : "Conectar ") + NET[net]);
+      btn.addEventListener("click", function () { startConnect(net, btn, mobile.matches); });
+      body.appendChild(el("div", { class: "line" }, el("span", { text: text }), btn));
+    });
+    fit();
+  }
+  function refreshAccounts() {
+    return api("GET", "/bootstrap").then(function (d) { S.data.accounts = d.accounts; S.data.instagram = d.instagram; S.data.counts = d.counts; renderAlert(); renderNotice(); renderAccounts(); }).catch(function () {});
+  }
   function renderBadges() {
     document.querySelectorAll("[data-badge]").forEach(function (b) { b.hidden = !S.queue.length; b.textContent = String(S.queue.length); });
   }
   function renderNotice() {
     var host = $("igNotice"); host.textContent = "";
-    var miss = missing(), acc = accounts();
-    $("igDot").hidden = !miss.length;
+    var acc = accounts(), shown = alerted();
+    $("igDot").hidden = !missing().length;
+    var miss = missing().filter(function (p) { return shown.indexOf(p) < 0; });
     if (!miss.length) return;
     var expired = miss.some(function (p) { return acc[p] && acc[p].account && acc[p].account.status === "expired"; });
     host.appendChild(el("div", { class: "notice" + (expired ? " warn" : "") },
@@ -582,22 +729,75 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     if (S.queue[1]) deck.appendChild(cardEl(S.queue[1], false));
     deck.appendChild(cardEl(c, true, (seen + 1) + " de " + S.total));
     host.appendChild(el("div", { class: "stage" }, el("div", { class: "deckwrap" }, deck),
+      el("div", { class: "opts", id: "opts", role: "group", "aria-label": "Opções deste post" }),
       el("div", { class: "actions" }, actBtn("no", "Reprovar", "ArrowLeft"), actBtn("fix", "Pedir ajuste", "ArrowUp"), actBtn("yes", "Aprovar", "ArrowRight"))));
-    var copy = el("div", { class: "copy" }, el("span", { class: "label", text: "Legenda" }));
-    copy.appendChild(el("p", { text: c.caption || (c.format === "story" ? "Story não leva legenda." : "Sem legenda.") }));
-    if (c.hashtags) copy.appendChild(el("p", { class: "tags", text: c.hashtags }));
-    var facts = el("div", { class: "facts2" }, el("span", null, "Publica em: ", el("b", { text: nets(c.format === "story" ? ["instagram"] : c.platforms) })));
-    if (c.location_name) facts.appendChild(el("span", null, "Local marcado: ", el("b", { text: c.location_name })));
-    if (c.audio_name) facts.appendChild(el("span", null, "Nome do áudio: ", el("b", { text: c.audio_name })));
-    if (c.auto_music && (c.platforms || []).indexOf("tiktok") >= 0 && c.kind !== "video") facts.appendChild(el("span", { text: "No TikTok, com música automática." }));
-    copy.appendChild(facts);
-    host.appendChild(copy);
+    host.appendChild(el("div", { class: "copy", id: "copy" }));
+    paintOptions(c);
     var keys = el("p", { class: "keys" });
     [["←", " reprovar  "], ["↑", " pedir ajuste  "], ["→", " aprovar  "], ["Z", " desfazer"]].forEach(function (k) { keys.appendChild(el("kbd", { text: k[0] })); keys.appendChild(document.createTextNode(k[1])); });
     host.appendChild(keys);
     fit();
     if (S.view === "aprovar") playTop();
   }
+  // ---------- opcoes do post (story, legenda, musica, local) ----------
+  var OPTS = [["story", "Story"], ["caption", "Legenda"], ["music", "Música"], ["location", "Local"]];
+  function optValues(c) { var v = {}; OPTS.forEach(function (o) { var st = c.options && c.options[o[0]]; if (st && st.allowed) v[o[0]] = !!st.on; }); return v; }
+  function optOn(c, k) { var st = c.options && c.options[k]; return !!(st && st.on); }
+  // Desenha os quatro interruptores e o resumo do que vai junto com o post. O que a rede nao aceita fica travado, com o motivo.
+  function paintOptions(c) {
+    var row = $("opts"), copy = $("copy"); if (!row || !copy) return;
+    row.textContent = "";
+    OPTS.forEach(function (o) {
+      var st = c.options && c.options[o[0]]; if (!st) return;
+      var b = el("button", { class: "opt" + (st.allowed ? "" : " locked"), type: "button", role: "switch", "aria-checked": String(!!st.on), "aria-disabled": String(!st.allowed),
+        "aria-label": o[1] + (st.on ? ": sim" : ": não") + (st.allowed ? "" : ". Indisponível: " + st.reason) },
+        el("span", { class: "sw", "aria-hidden": "true" }), el("span", { text: o[1] }), el("small", { text: st.allowed ? (st.note || (st.on ? "Sim" : "Não")) : st.reason }));
+      b.addEventListener("click", function () {
+        if (!st.allowed) { toast(o[1] + ": " + st.reason, { ms: 8000 }); return; }
+        toggleOption(c, o[0]);
+      });
+      row.appendChild(b);
+    });
+    copy.textContent = "";
+    copy.appendChild(el("span", { class: "label", text: "Legenda" }));
+    var capOn = optOn(c, "caption"), hasText = c.caption || c.hashtags || c.link_url;
+    if (c.format === "story") copy.appendChild(el("p", { text: "Story não leva legenda." }));
+    else if (!hasText) copy.appendChild(el("p", { text: "Sem legenda." }));
+    else {
+      if (!capOn) copy.appendChild(el("p", { class: "muted", text: "Este post vai sem legenda (opção desligada)." }));
+      if (c.caption) copy.appendChild(el("p", { class: capOn ? "" : "offcap", text: c.caption }));
+      if (c.link_url) copy.appendChild(el("p", { class: "linkline" + (capOn ? "" : " offcap") }, "Link: ", el("a", { href: c.link_url, target: "_blank", rel: "noopener", text: c.link_url })));
+      if (c.hashtags) copy.appendChild(el("p", { class: "tags" + (capOn ? "" : " offcap"), text: c.hashtags }));
+    }
+    var where = nets(c.format === "story" ? ["instagram"] : c.platforms) + (c.format !== "story" && optOn(c, "story") ? ", e também no story do Instagram" : "");
+    var facts = el("div", { class: "facts2" }, el("span", null, "Publica em: ", el("b", { text: where })));
+    if (c.location_name && optOn(c, "location")) facts.appendChild(el("span", null, "Local marcado: ", el("b", { text: c.location_name })));
+    if (c.audio_name) facts.appendChild(el("span", null, "Nome do áudio: ", el("b", { text: c.audio_name })));
+    if (optOn(c, "music")) facts.appendChild(el("span", { text: "No TikTok, com música automática." }));
+    copy.appendChild(facts);
+    // No celular os interruptores sao compactos: os motivos e observacoes ficam listados aqui.
+    var notes = el("div", { class: "optnotes" });
+    OPTS.forEach(function (o) {
+      var st = c.options && c.options[o[0]]; if (!st) return;
+      var text = st.allowed ? st.note : st.reason; if (!text) return;
+      notes.appendChild(el("span", null, el("b", { text: o[1] + (st.allowed ? ": " : " (indisponível): ") }), text));
+    });
+    if (notes.childNodes.length) copy.appendChild(notes);
+  }
+  function toggleOption(c, key) {
+    var st = c.options[key], before = JSON.parse(JSON.stringify(c.options));
+    st.on = !st.on; paintOptions(c);
+    var body = {}; body[key] = st.on;
+    api("POST", "/options", { creative_id: c.id, options: body }).then(function (r) {
+      // A resposta traz as observacoes atualizadas (ex.: com o story ligado, a legenda vale so para o post principal).
+      if (r.options && S.queue.indexOf(c) >= 0) { var mine = optValues(c); c.options = r.options; Object.keys(mine).forEach(function (k) { if (c.options[k] && c.options[k].allowed) c.options[k].on = mine[k]; }); if (S.queue[0] === c) paintOptions(c); }
+    }).catch(function (e) {
+      if (e.code === "already_decided" || e.code === "not_found") return;
+      c.options = before; if (S.queue[0] === c) paintOptions(c);
+      toast(e.message, { bad: true });
+    });
+  }
+
   var mobile = window.matchMedia("(max-width: 859px)");
   function fit() {
     var stage = document.querySelector(".stage"); if (!stage) return;
@@ -668,17 +868,24 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     var c = S.queue[0]; if (!c || S.busy) return;
     S.busy = true;
     var kind = action === "approve" ? "yes" : action === "reject" ? "no" : "fix";
-    var req = api("POST", "/decide", { creative_id: c.id, action: action, comment: comment });
+    var req = api("POST", "/decide", { creative_id: c.id, action: action, comment: comment, options: action === "approve" ? optValues(c) : undefined });
     req.catch(function () {});
     // Otimista: o proximo criativo aparece assim que o cartao sai; se a API recusar, o criativo volta para a fila.
     flyOut(topCard(), kind, function () {
       S.queue.shift(); S.busy = false; renderDeck();
       req.then(function (res) {
         S.libraryStale = true;
-        if (action === "approve") S.data.counts.scheduled++;
-        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + "."
+        if (action === "approve") {
+          S.data.counts.scheduled++;
+          var acc = accounts();
+          (res.platforms || []).forEach(function (p) { if (acc[p] && !acc[p].connected) acc[p].waiting = (acc[p].waiting || 0) + 1; });
+          renderAlert(); renderNotice();
+        }
+        var msg = action === "approve" ? "Aprovado. Vai ao ar " + fmtDate(res.scheduled_for, true) + (res.platforms && res.platforms.length ? " no " + nets(res.platforms) : "") + (res.story ? ", e também no story" : "") + "."
           : action === "reject" ? "Reprovado. O agente não publica este." : "Pedido de ajuste enviado ao agente.";
-        toast(msg, { action: "Desfazer", onAction: function () { undo(c); } });
+        var o = { action: "Desfazer", onAction: function () { undo(c); }, ms: 8000 };
+        if (action === "approve") { o.action2 = "Acompanhar"; o.onAction2 = function () { show("posts"); }; }
+        toast(msg, o);
       }).catch(function (e) {
         S.libraryStale = true;
         if (e.code !== "already_decided" && e.code !== "not_found") { S.queue.unshift(c); renderDeck(); }
@@ -694,7 +901,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     api("POST", "/undo", { creative_id: c.id }).then(function (res) {
       S.queue.unshift(res.creative || c);
       if (S.queue.length > S.total) S.total = S.queue.length;
-      S.libraryStale = true; renderDeck();
+      S.libraryStale = true; renderDeck(); refreshAccounts();
       if (fromLibrary) { loadLibrary(); toast("Voltou para a fila de aprovação."); }
       else toast("Desfeito. O criativo voltou para a fila.", { ms: 3000 });
     }).catch(function (e) { toast(e.message, { bad: true }); if (fromLibrary) { S.libraryStale = true; loadLibrary(); } });
@@ -755,6 +962,170 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     return el("span", { class: "pill wait", text: "Agendado" });
   }
   function locked(it) { return postsOf(it).some(function (p) { return p.status === "published" || p.status === "processing"; }); }
+  var METRIC_LABELS = [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]];
+  // Rede, status, horario, link e metricas de uma publicacao.
+  function postBox(p, m) {
+    var line = el("div", { class: "meta" }, el("b", { text: (NET[p.platform] || "Instagram") + (p.placement === "story" ? " · Story" : "") }), postPill(p),
+      el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at, true) : "para " + fmtDate(p.scheduled_for, true) }));
+    if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir na rede" }));
+    var box = el("div", { class: "pp" }, line);
+    if (p.status === "published" && m) {
+      var mt = el("div", { class: "metrics num" });
+      METRIC_LABELS.forEach(function (k) { if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1])); });
+      box.appendChild(mt);
+    } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
+    if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. Veja o motivo e tente de novo em Andamento, no topo desta aba." }));
+    return box;
+  }
+
+  // ---------- andamento: na fila, enviando, publicado ou falhou, e os proximos posts ----------
+  var TSTATE = { na_fila: ["wait", "Na fila"], enviando: ["send", "Enviando"], publicado: ["live", "Publicado"], falhou: ["no", "Falhou"] };
+  function stopProgress() { clearTimeout(S.progressTimer); S.progressTimer = null; }
+  function loadProgress() {
+    stopProgress();
+    if (S.view !== "posts" || document.hidden || S.progressBusy) return;
+    S.progressBusy = true;
+    api("GET", "/progress").then(function (d) {
+      var before = S.progress; S.progress = d; S.progressBusy = false;
+      // Um post que acabou de sair muda os numeros: recarrega os resultados.
+      if (before) {
+        var was = {}; before.items.forEach(function (i) { was[i.id] = i.state; });
+        if (d.items.some(function (i) { return was[i.id] && was[i.id] !== i.state; })) { S.libraryStale = true; loadLibrary(); refreshAccounts(); }
+      }
+      renderProgress();
+      // Mais rapido enquanto ha post saindo agora ou prestes a sair.
+      var soon = Date.now() + 3 * 60000;
+      var hot = d.items.some(function (i) { return i.state === "enviando" || (i.state === "na_fila" && i.eta && new Date(i.eta).getTime() < soon); });
+      S.progressTimer = setTimeout(loadProgress, hot ? 5000 : 20000);
+    }).catch(function (e) {
+      S.progressBusy = false;
+      if (!S.progress) { var host = $("track"); host.textContent = ""; host.appendChild(el("p", { class: "muted", text: e.message })); }
+      S.progressTimer = setTimeout(loadProgress, 20000);
+    });
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopProgress(); else if (S.view === "posts") loadProgress(); });
+  function retryPost(i, btn) {
+    btn.disabled = true; btn.textContent = "Enviando de novo...";
+    api("POST", "/retry", { post_id: i.id }).then(function () { toast("O post voltou para a fila e sai no próximo horário livre da conta."); loadProgress(); })
+      .catch(function (e) { btn.disabled = false; btn.textContent = "Tentar de novo"; toast(e.message, { bad: true }); });
+  }
+  function trackItem(i) {
+    var st = TSTATE[i.state] || TSTATE.na_fila, gap = S.progress.pacing.min_gap_minutes;
+    var tt = el("button", { class: "tt", type: "button", "aria-label": "Ver criativo: " + i.title });
+    if (i.thumb) tt.appendChild(el("img", { src: i.thumb, alt: "", loading: "lazy" }));
+    else { var v = el("video", { src: i.media_url, preload: "metadata" }); v.muted = true; tt.appendChild(v); }
+    tt.addEventListener("click", function () {
+      var it = S.library && S.library.items.filter(function (x) { return x.id === i.creative_id; })[0];
+      if (it) openViewer(it);
+    });
+    var meta = el("div", { class: "meta" }, el("b", { text: (NET[i.platform] || i.platform) + (i.placement === "story" ? " · Story" : "") }), el("span", { class: "pill " + st[0], text: st[1] }));
+    var when = "";
+    if (i.state === "publicado") when = "em " + fmtDate(i.published_at, true);
+    else if (i.state === "enviando") when = "enviando para a rede agora";
+    else if (i.state === "na_fila") when = i.wait === "conta" ? "aguardando a conexão da conta" : "sai " + fmtDate(i.eta || i.scheduled_for, true);
+    else when = "estava marcado para " + fmtDate(i.scheduled_for, true);
+    meta.appendChild(el("span", { text: when }));
+    if (i.permalink) meta.appendChild(el("a", { href: i.permalink, target: "_blank", rel: "noopener", text: "Abrir na rede" }));
+    var body = el("div", { class: "tb" }, el("h3", { text: i.title }), meta);
+    if (i.state === "na_fila" && i.wait === "intervalo") body.appendChild(el("p", { class: "why muted", text: "Respeitando o intervalo de " + gap + " min entre publicações da mesma conta." }));
+    if (i.state === "na_fila" && i.wait === "teto") body.appendChild(el("p", { class: "why muted", text: "A conta atingiu o teto de " + S.progress.pacing.daily_cap + " publicações em 24 horas. O post sai quando abrir a próxima vaga." }));
+    if (i.state === "na_fila" && i.wait === "pausa") body.appendChild(el("p", { class: "why muted", text: "A rede pediu uma pausa nesta conta. O post sai quando a pausa terminar." }));
+    if (i.error && i.state !== "publicado") {
+      var why = el("p", { class: "why" }, (i.state === "falhou" ? "Motivo: " : "Tentativa anterior: ") + i.error.message);
+      if (i.error.detail) why.appendChild(el("small", { text: "Resposta da rede: " + i.error.detail }));
+      body.appendChild(why);
+    }
+    if (i.can_retry) {
+      var btn = el("button", { class: "btn sm", type: "button", text: "Tentar de novo" });
+      btn.addEventListener("click", function () { retryPost(i, btn); });
+      body.appendChild(el("div", { class: "row" }, btn));
+    }
+    return el("li", { class: "ti is-" + i.state }, tt, body);
+  }
+  function renderProgress() {
+    var host = $("track"), d = S.progress; if (!d) return;
+    host.textContent = ""; $("trackLive").hidden = false;
+    var by = function (s) { return d.items.filter(function (i) { return i.state === s; }); };
+    var t = function (i) { return i.eta || i.scheduled_for || ""; };
+    var next = by("na_fila").sort(function (a, b) { return (a.wait === "conta") - (b.wait === "conta") || (t(a) < t(b) ? -1 : 1); });
+    var done = by("publicado").sort(function (a, b) { return a.published_at < b.published_at ? 1 : -1; }).slice(0, 5);
+    var groups = [["Enviando agora", by("enviando")], ["Precisa de atenção", by("falhou")], ["Próximos posts", next], ["Publicados nas últimas 48 horas", done]];
+    var any = false;
+    groups.forEach(function (g) {
+      if (!g[1].length) return; any = true;
+      var ul = el("ul", { class: "tl" }); g[1].forEach(function (i) { ul.appendChild(trackItem(i)); });
+      host.appendChild(el("div", { class: "tgroup" }, el("span", { class: "label", text: g[0] + " · " + g[1].length }), ul));
+    });
+    if (!any) host.appendChild(el("p", { class: "muted", text: "Nenhum post em andamento. Assim que você aprovar um criativo, ele aparece aqui com a data e a hora em que vai ao ar." }));
+  }
+
+  // ---------- visualizacao ampliada ----------
+  var viewer = $("viewer"), viewerMove = null;
+  function openViewer(it) {
+    var items = itemsOf(it), at = 0, ps = postsOf(it), b = bucket(it);
+    var stage = $("viewerStage"), info = $("viewerInfo");
+    stage.className = "vstage " + (it.format === "feed" ? "r45" : "r916");
+    var count = el("span", { class: "count num" });
+    function paint() {
+      stage.textContent = "";
+      var item = items[at], node;
+      if (item.kind === "video") {
+        node = el("video", { class: "vmedia", src: item.url, poster: item.thumb || undefined, controls: true, loop: true, preload: "auto" });
+        node.setAttribute("playsinline", "");
+      } else node = el("img", { class: "vmedia", src: item.url, alt: (it.title || "Criativo") + (items.length > 1 ? ", imagem " + (at + 1) + " de " + items.length : "") });
+      stage.appendChild(node);
+      if (items.length > 1) {
+        var dots = el("div", { class: "dots", "aria-hidden": "true" });
+        items.forEach(function (_, i) { dots.appendChild(el("i", { class: i === at ? "on" : "" })); });
+        stage.appendChild(dots);
+        stage.appendChild(el("button", { class: "slide prev", type: "button", "aria-label": "Imagem anterior", disabled: at === 0, onclick: function () { viewerMove(-1); } }, svg(ICON.left)));
+        stage.appendChild(el("button", { class: "slide next", type: "button", "aria-label": "Próxima imagem", disabled: at === items.length - 1, onclick: function () { viewerMove(1); } }, svg(ICON.right)));
+        count.textContent = (at + 1) + " de " + items.length;
+      }
+      if (item.kind === "video") node.play().catch(function () {});
+    }
+    viewerMove = function (d) {
+      var to = Math.max(0, Math.min(items.length - 1, at + d)); if (to === at) return;
+      // O redesenho troca os botoes: devolve o foco para a seta usada (ou para a outra, se chegou ao fim).
+      var hadFocus = stage.contains(document.activeElement);
+      at = to; paint();
+      if (hadFocus) { var btn = stage.querySelector(d > 0 ? ".slide.next:not(:disabled)" : ".slide.prev:not(:disabled)") || stage.querySelector(".slide:not(:disabled)"); if (btn) btn.focus(); }
+    };
+
+    info.textContent = "";
+    info.appendChild(el("h2", { id: "viewerTitle", text: it.title || (it.caption || "Criativo").slice(0, 60) }));
+    var meta = el("div", { class: "meta" }, el("span", { class: "pill", text: label(it) + (items.length > 1 ? " · " + items.length + " mídias" : "") }));
+    if (b === "ajuste") meta.appendChild(el("span", { class: "pill fix", text: "Em ajuste" }));
+    if (b === "reprovados") meta.appendChild(el("span", { class: "pill no", text: "Reprovado" }));
+    if ((b === "ajuste" || b === "reprovados") && it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at, true) }));
+    if (items.length > 1) meta.appendChild(count);
+    info.appendChild(meta);
+    ps.forEach(function (p) { info.appendChild(postBox(p, p.metrics || (ps.length === 1 ? it.metrics : null))); });
+    if (!ps.length) info.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Destino: " + nets(it.format === "story" ? ["instagram"] : it.platforms) + "." }));
+    if (it.decision_comment) info.appendChild(el("p", { class: "note", text: "Seu pedido: " + it.decision_comment }));
+    if (it.location_name) info.appendChild(el("p", { class: "muted", style: "font-size:0.85rem", text: "Local marcado: " + it.location_name }));
+    info.appendChild(el("div", { class: "field" }, el("span", { class: "label", text: "Legenda" }),
+      el("p", { class: "cap", text: it.caption || (it.format === "story" ? "Story não leva legenda." : "Sem legenda.") }),
+      it.hashtags ? el("p", { class: "tags", text: it.hashtags }) : null));
+    if (!locked(it)) {
+      info.appendChild(el("div", { class: "row" }, el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { closeViewer(); undo(it, true); } })));
+    }
+    paint();
+    if (viewer.showModal) viewer.showModal(); else viewer.setAttribute("open", "");
+    viewer.scrollTop = 0; info.scrollTop = 0;
+    $("viewerClose").focus();
+  }
+  function closeViewer() { if (viewer.close) viewer.close(); else { viewer.removeAttribute("open"); cleanViewer(); } }
+  function cleanViewer() { $("viewerStage").textContent = ""; viewerMove = null; }
+  viewer.addEventListener("close", cleanViewer);
+  $("viewerClose").addEventListener("click", closeViewer);
+  // Clique fora do conteudo (na area escura) fecha.
+  viewer.addEventListener("click", function (ev) { if (ev.target === viewer) closeViewer(); });
+  document.addEventListener("keydown", function (ev) {
+    if (!viewer.open || !viewerMove) return;
+    if (ev.key === "ArrowRight") { ev.preventDefault(); viewerMove(1); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); viewerMove(-1); }
+  });
   function renderLibrary() {
     var lib = S.library, t = lib.totals, demo = S.data.client.is_demo, acc = accounts();
     var stats = $("stats"); stats.textContent = "";
@@ -792,39 +1163,28 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
       return;
     }
     items.forEach(function (it) {
-      var b = bucket(it), ps = postsOf(it);
-      var thumb = el("div", { class: "thumb" });
+      var b = bucket(it), ps = postsOf(it), title = it.title || (it.caption || "Sem título").slice(0, 60);
+      var thumb = el("button", { class: "thumb", type: "button", "aria-label": "Ver criativo em tamanho grande: " + title, onclick: function (ev) { ev.stopPropagation(); openViewer(it); } });
       if (it.kind !== "video" || it.thumb_url) thumb.appendChild(el("img", { src: it.thumb_url || it.media_url, alt: "", loading: "lazy" }));
       else { var v = el("video", { src: it.media_url, preload: "metadata" }); v.muted = true; thumb.appendChild(v); }
+      thumb.appendChild(el("span", { class: "zoom", "aria-hidden": "true" }, svg(ICON.zoom, "2.4")));
       var body = el("div", { class: "body" });
-      body.appendChild(el("h3", { text: it.title || (it.caption || "Sem título").slice(0, 60) }));
+      body.appendChild(el("h3", { text: title }));
       var meta = el("div", { class: "meta" });
       if (b === "ajuste") meta.appendChild(el("span", { class: "pill fix", text: "Em ajuste" }));
       if (b === "reprovados") meta.appendChild(el("span", { class: "pill no", text: "Reprovado" }));
       meta.appendChild(el("span", { text: label(it) + (it.location_name ? " · " + it.location_name : "") }));
       if ((b === "ajuste" || b === "reprovados") && it.decided_at) meta.appendChild(el("span", { text: "em " + fmtDate(it.decided_at) }));
       body.appendChild(meta);
-      ps.forEach(function (p) {
-        var m = p.metrics || (ps.length === 1 ? it.metrics : null);
-        var line = el("div", { class: "meta" }, el("b", { text: NET[p.platform] || "Instagram" }), postPill(p),
-          el("span", { text: p.status === "published" ? "em " + fmtDate(p.published_at) : "para " + fmtDate(p.scheduled_for) }));
-        if (p.permalink) line.appendChild(el("a", { href: p.permalink, target: "_blank", rel: "noopener", text: "Abrir" }));
-        var box = el("div", { class: "pp" }, line);
-        if (p.status === "published" && m) {
-          var mt = el("div", { class: "metrics num" });
-          [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["saved", "salvos"], ["shares", "compart."]].forEach(function (k) {
-            if (m[k[0]] != null) mt.appendChild(el("span", null, el("b", { text: n(m[k[0]]) }), " " + k[1]));
-          });
-          box.appendChild(mt);
-        } else if (p.status === "published") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "As métricas aparecem algum tempo depois da publicação." }));
-        if (p.status === "failed") box.appendChild(el("p", { class: "muted", style: "font-size:0.8rem", text: "A rede não aceitou este post. O time do Sr. Post já foi avisado." }));
-        body.appendChild(box);
-      });
+      ps.forEach(function (p) { body.appendChild(postBox(p, p.metrics || (ps.length === 1 ? it.metrics : null))); });
       if (it.decision_comment) body.appendChild(el("p", { class: "note", text: "Seu pedido: " + it.decision_comment }));
       if (!locked(it)) {
         body.appendChild(el("div", { class: "row" }, el("button", { class: "link", type: "button", text: "Devolver para a fila", onclick: function () { undo(it, true); } })));
       }
-      list.appendChild(el("li", { class: "post" }, thumb, body));
+      var li = el("li", { class: "post" }, thumb, body);
+      // O cartao inteiro abre a visualizacao; links e botoes internos mantem a propria acao.
+      li.addEventListener("click", function (ev) { if (!ev.target.closest("a, button")) openViewer(it); });
+      list.appendChild(li);
     });
   }
 
@@ -888,7 +1248,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
             var off = { available: st.available, connected: false, account: null };
             if (S.data.accounts) S.data.accounts[net] = off;
             if (net === "instagram") S.data.instagram = off;
-            S.libraryStale = true; renderNotice(); renderAccounts(); toast(NET[net] + " desconectado.");
+            S.libraryStale = true; renderAccounts(); refreshAccounts(); toast(NET[net] + " desconectado.");
           }).catch(function (e) { toast(e.message, { bad: true }); });
         } }));
         bar.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Cancelar", onclick: renderAccounts }));
@@ -900,14 +1260,10 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1.5px soli
     head.appendChild(el("h3", { text: NET[net] }));
     head.appendChild(el("span", { class: "pill" + (expired ? " no" : ""), style: "margin-left:auto", text: expired ? "Reconectar" : "Não conectado" }));
     box.appendChild(head);
-    box.appendChild(el("p", { style: "font-size:0.9rem", text: expired ? "A conexão com @" + (acc.username || "sua conta") + " precisa ser refeita para o agente voltar a publicar." : cfg.intro }));
+    box.appendChild(el("p", { style: "font-size:0.9rem", text: expired ? "A conexão com @" + (acc.username || "sua conta") + " expirou ou foi removida. Reconecte para o agente voltar a publicar: os posts aprovados continuam guardados e saem depois da reconexão." : cfg.intro }));
     if (st.available) {
       var txt = (expired ? "Reconectar " : "Conectar ") + NET[net];
-      var btn = el("button", { class: "btn", type: "button", text: txt, style: "justify-self:start", onclick: function () {
-        btn.disabled = true; btn.textContent = cfg.opening;
-        api("POST", cfg.start).then(function (r) { location.href = r.authorize_url; })
-          .catch(function (e) { btn.disabled = false; btn.textContent = txt; toast(e.message, { bad: true }); });
-      } });
+      var btn = el("button", { class: "btn", type: "button", text: txt, style: "justify-self:start", onclick: function () { startConnect(net, btn); } });
       box.appendChild(btn);
     } else box.appendChild(el("div", { class: "notice" }, el("span", { text: cfg.pending })));
     var req = el("ul", { style: "display:grid;gap:4px;font-size:0.82rem;color:var(--muted)" });

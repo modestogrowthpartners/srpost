@@ -1,5 +1,6 @@
 // Base compartilhada: cliente do banco, respostas HTTP, hash e autenticacao.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { composeCaption, normalizeOptions, optionColumns } from "./options.ts";
 
 export const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -112,11 +113,12 @@ export async function authPortal(req: Request): Promise<ClientRow> {
   return client as ClientRow;
 }
 
-export async function authKey(req: Request, roles: string[]): Promise<{ id: string; role: string; name: string }> {
+// Chaves de ingestao podem ser presas a um cliente (client_id): so enviam criativos para ele.
+export async function authKey(req: Request, roles: string[]): Promise<{ id: string; role: string; name: string; client_id: string | null }> {
   const key = req.headers.get("x-admin-key") ?? req.headers.get("x-api-key") ?? "";
   if (key.length < 20) throw new HttpError(401, "missing_key", "Chave de acesso ausente.");
   const hash = await sha256Hex(key);
-  const { data } = await db.from("api_keys").select("id, role, name, revoked_at, last_used_at")
+  const { data } = await db.from("api_keys").select("id, role, name, client_id, revoked_at, last_used_at")
     .eq("key_hash", hash).maybeSingle();
   if (!data || data.revoked_at || !roles.includes(data.role)) {
     throw new HttpError(401, "invalid_key", "Chave de acesso inválida.");
@@ -124,7 +126,7 @@ export async function authKey(req: Request, roles: string[]): Promise<{ id: stri
   if (!data.last_used_at || Date.now() - new Date(data.last_used_at).getTime() > 5 * 60_000) {
     await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
   }
-  return { id: data.id, role: data.role, name: data.name };
+  return { id: data.id, role: data.role, name: data.name, client_id: data.client_id ?? null };
 }
 
 // ---------- Criativos (usado pelo painel e pela ingestao) ----------
@@ -169,8 +171,10 @@ export async function createCreatives(clientId: string, rawItems: unknown, sourc
     if (format === "feed" && kind === "video") format = "reel"; // video no feed e publicado como Reel pela API
     const caption = str(it.caption, 2200);
     const hashtags = str(it.hashtags, 600);
-    if ((caption + "\n\n" + hashtags).length > 2200) {
-      throw new HttpError(400, "caption_too_long", `${label}: legenda + hashtags passam de 2.200 caracteres.`);
+    const link = str(it.link ?? it.link_url, 500);
+    if (link && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(link)) throw new HttpError(400, "bad_link", `${label}: link inválido (use um endereço completo, com https://).`);
+    if (composeCaption({ caption, hashtags, link_url: link }).length > 2200) {
+      throw new HttpError(400, "caption_too_long", `${label}: legenda + link + hashtags passam de 2.200 caracteres.`);
     }
     if ((hashtags.match(/#/g) ?? []).length > 30) {
       throw new HttpError(400, "too_many_hashtags", `${label}: o Instagram aceita no máximo 30 hashtags.`);
@@ -190,13 +194,20 @@ export async function createCreatives(clientId: string, rawItems: unknown, sourc
     const revisionOf = isUuid(it.revision_of) ? it.revision_of : null;
     if (revisionOf) replaced.push(revisionOf);
     const cover = media[0] ?? single!;
+    // Opcoes: aceita "options": { story, caption, music, location } e o campo antigo auto_music.
+    // O que a rede nao aceita para este formato fica desligado, sem erro.
+    const wanted = { ...(it.auto_music === true ? { music: true } : {}), ...(it.options && typeof it.options === "object" ? it.options as Record<string, unknown> : {}) };
+    const opts = normalizeOptions({
+      kind, format, platforms, caption, hashtags, link_url: link || null, location_id: locationId || null, location_name: null,
+      auto_music: false, opt_story: false, opt_caption: true, opt_location: true,
+    }, wanted);
     rows.push({
       client_id: clientId, kind, format, media_url: cover.url, media_path: cover.path,
       thumb_url: cover.thumb, media,
       title: str(it.title, 120) || null, caption, hashtags, platforms,
       location_id: locationId || null, location_name: locationId ? (str(it.location_name, 120) || null) : null,
       audio_name: format === "reel" ? (str(it.audio_name, 80) || null) : null,
-      auto_music: it.auto_music === true,
+      link_url: link || null, ...optionColumns(opts),
       ai_generated: it.ai_generated === true, suggested_at: suggestedAt, revision_of: revisionOf,
       source, external_ref: str(it.external_ref, 200) || null,
     });
@@ -212,7 +223,7 @@ export async function createCreatives(clientId: string, rawItems: unknown, sourc
   }
   let created: unknown[] = [];
   if (toInsert.length) {
-    created = must(await db.from("creatives").insert(toInsert).select("id, kind, format, media_url, platforms, status, external_ref"));
+    created = must(await db.from("creatives").insert(toInsert).select("id, kind, format, media_url, platforms, status, external_ref, link_url, opt_story, opt_caption, auto_music, opt_location"));
   }
   if (replaced.length) {
     await db.from("creatives").update({ status: "replaced" })

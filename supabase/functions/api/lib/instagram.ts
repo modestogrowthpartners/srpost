@@ -10,10 +10,12 @@ export const REQUIRED_PERMISSIONS = ["instagram_basic", "instagram_content_publi
 export const OPTIONAL_PERMISSIONS = ["instagram_manage_insights"];
 
 export class IgError extends Error {
-  constructor(message: string, public status: number, public code?: number, public subcode?: number) {
+  // `info` guarda o erro como a Meta devolveu (tipo, mensagem tecnica, fbtrace_id), para o historico de tentativas.
+  constructor(message: string, public status: number, public code?: number, public subcode?: number, public info: Record<string, unknown> = {}) {
     super(message);
   }
-  get tokenInvalid() { return this.code === 190; }
+  // 190: token invalido, expirado ou revogado. 102: sessao invalida.
+  get tokenInvalid() { return this.code === 190 || this.code === 102; }
 }
 
 async function parse(res: Response) {
@@ -23,7 +25,10 @@ async function parse(res: Response) {
   if (!res.ok || body?.error) {
     const e = body?.error ?? {};
     const msg = e.error_user_msg || e.message || text.slice(0, 300) || `HTTP ${res.status}`;
-    throw new IgError(String(msg), res.status, e.code, e.error_subcode);
+    throw new IgError(String(msg), res.status, e.code, e.error_subcode, {
+      http: res.status, type: e.type, message: e.message, user_title: e.error_user_title, user_msg: e.error_user_msg,
+      is_transient: e.is_transient, fbtrace_id: e.fbtrace_id,
+    });
   }
   return body;
 }
@@ -83,26 +88,62 @@ export async function fbUserId(token: string): Promise<string | null> {
 
 export type IgAccount = {
   igId: string; username: string | null; name: string | null; picture: string | null; followers: number | null;
-  pageId: string; pageName: string | null; pageToken: string | null;
+  pageId: string | null; pageName: string | null; pageToken: string | null;
 };
 
-// Contas profissionais do Instagram ligadas as Paginas que a pessoa liberou no login.
-export async function listInstagramAccounts(token: string): Promise<IgAccount[]> {
-  const r = await get("/me/accounts", {
-    fields: "id,name,access_token,instagram_business_account{id,username,name,profile_picture_url,followers_count}",
-    limit: "100",
-  }, token);
-  const out: IgAccount[] = [];
-  for (const p of r?.data ?? []) {
-    const ig = p.instagram_business_account;
-    if (!ig?.id) continue;
-    out.push({
-      igId: String(ig.id), username: ig.username ?? null, name: ig.name ?? null, picture: ig.profile_picture_url ?? null,
-      followers: typeof ig.followers_count === "number" ? ig.followers_count : null,
-      pageId: String(p.id), pageName: p.name ?? null, pageToken: p.access_token ?? null,
+const IG_FIELDS = "id,username,name,profile_picture_url,followers_count";
+
+function fromIgNode(ig: any, page?: any): IgAccount {
+  return {
+    igId: String(ig.id), username: ig.username ?? null, name: ig.name ?? null, picture: ig.profile_picture_url ?? null,
+    followers: typeof ig.followers_count === "number" ? ig.followers_count : null,
+    pageId: page?.id ? String(page.id) : null, pageName: page?.name ?? null, pageToken: page?.access_token ?? null,
+  };
+}
+
+// Contas profissionais do Instagram que a pessoa ou a empresa liberou no login. Tenta, nesta ordem:
+//   1. me/accounts                       token de usuario: Paginas com Instagram vinculado
+//   2. me/assigned_pages                 token de usuario de sistema: Paginas atribuidas
+//   3. me/assigned_instagram_accounts    token de usuario de sistema: contas do Instagram atribuidas, com ou sem Pagina
+//   4. <portfolio>/instagram_business_accounts   contas do portfolio empresarial do cliente
+// `trace` registra o que cada consulta devolveu, para diagnostico no painel.
+export async function listInstagramAccounts(token: string): Promise<{ accounts: IgAccount[]; trace: string }> {
+  const found = new Map<string, IgAccount>();
+  const trace: string[] = [];
+  const add = (a: IgAccount) => {
+    const cur = found.get(a.igId);
+    if (!cur || (!cur.pageToken && a.pageToken)) found.set(a.igId, { ...cur, ...a, username: a.username ?? cur?.username ?? null });
+  };
+  const step = async (label: string, fn: () => Promise<number>) => {
+    try { trace.push(`${label}: ${await fn()}`); }
+    catch (e) { trace.push(`${label}: erro (${e instanceof Error ? e.message.slice(0, 90) : e})`); }
+  };
+  const pageFields = `id,name,access_token,instagram_business_account{${IG_FIELDS}}`;
+  const pages = (edge: string) => async () => {
+    const r = await get(edge, { fields: pageFields, limit: "100" }, token);
+    let n = 0;
+    for (const p of r?.data ?? []) if (p.instagram_business_account?.id) { add(fromIgNode(p.instagram_business_account, p)); n++; }
+    return n;
+  };
+  const igEdge = (edge: string) => async () => {
+    let r: any;
+    try { r = await get(edge, { fields: IG_FIELDS, limit: "100" }, token); }
+    catch (_) { r = await get(edge, { fields: "id,username", limit: "100" }, token); }
+    let n = 0;
+    for (const ig of r?.data ?? []) if (ig?.id) { add(fromIgNode(ig)); n++; }
+    return n;
+  };
+  await step("me/accounts", pages("/me/accounts"));
+  await step("me/assigned_pages", pages("/me/assigned_pages"));
+  await step("me/assigned_instagram_accounts", igEdge("/me/assigned_instagram_accounts"));
+  if (!found.size) {
+    await step("portfolio/instagram_business_accounts", async () => {
+      const me = await get("/me", { fields: "client_business_id" }, token);
+      if (!me?.client_business_id) return 0;
+      return igEdge(`/${me.client_business_id}/instagram_business_accounts`)();
     });
   }
-  return out;
+  return { accounts: [...found.values()], trace: trace.join("; ") };
 }
 
 export function profile(igUserId: string, token: string) {
@@ -126,12 +167,12 @@ export async function createContainer(igUserId: string, token: string, p: Publis
     params.media_type = "REELS";
     params.video_url = p.mediaUrl;
     params.share_to_feed = "true";
-    params.caption = p.caption;
+    if (p.caption) params.caption = p.caption;
     // A API so renomeia o audio original do Reel; nao seleciona musica da biblioteca do Instagram.
     if (p.audioName) params.audio_name = p.audioName;
   } else {
     params.image_url = p.mediaUrl;
-    params.caption = p.caption;
+    if (p.caption) params.caption = p.caption;
   }
   if (p.locationId && p.format !== "story") params.location_id = p.locationId;
   if (p.aiGenerated) params.is_ai_generated = "true";
@@ -159,7 +200,8 @@ async function createCarousel(igUserId: string, token: string, p: PublishInput):
       await new Promise((r) => setTimeout(r, 4000));
     }
   }
-  const params: Record<string, string> = { media_type: "CAROUSEL", children: ids.join(","), caption: p.caption };
+  const params: Record<string, string> = { media_type: "CAROUSEL", children: ids.join(",") };
+  if (p.caption) params.caption = p.caption;
   if (p.locationId) params.location_id = p.locationId;
   const r = await post(`/${igUserId}/media`, params, token);
   return String(r.id);
@@ -172,6 +214,18 @@ export async function searchPlaces(q: string, token: string) {
     id: String(p.id), name: String(p.name ?? ""),
     address: [p.location?.street, p.location?.city, p.location?.state].filter(Boolean).join(", "),
   }));
+}
+
+// Uso do limite de publicacoes da conta na janela de 24 horas, como a Meta informa (hoje 50 por 24 horas).
+export async function publishingLimit(igUserId: string, token: string): Promise<{ used: number; total: number; windowSeconds: number } | null> {
+  const r = await get(`/${igUserId}/content_publishing_limit`, { fields: "quota_usage,config" }, token);
+  const d = r?.data?.[0];
+  if (!d || typeof d.quota_usage !== "number") return null;
+  return {
+    used: d.quota_usage,
+    total: typeof d.config?.quota_total === "number" ? d.config.quota_total : 50,
+    windowSeconds: typeof d.config?.quota_duration === "number" ? d.config.quota_duration : 86_400,
+  };
 }
 
 export async function containerStatus(containerId: string, token: string): Promise<{ code: string; detail: string }> {
