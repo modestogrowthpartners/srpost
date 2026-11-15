@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sr. Post | Caixa de entrada</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F4F7FA; --soft: #E4E9EF; --card: #FFFFFF; --ink: #0B0F14; --muted: #4E5B6B; --line: #B5C0CD;
+  --blue: #668EC2; --sky: #DCE6F2; --butter: #FFA070; --butter-soft: #FFE3D3; --approve: #13243B;
+  --error: #B3361F; --error-soft: #F7DDD6;
+  --display: "Chakra Petch", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 0.9rem; line-height: 1.5; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+h1 { font-size: 1.5rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.wrap { width: 100%; max-width: 920px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
+.top { border-bottom: 1.5px solid var(--ink); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 54px; padding-block: 8px; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand b { font-family: var(--display); font-size: 1.15rem; white-space: nowrap; }
+.brand span { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+main { padding-block: 22px 64px; display: grid; gap: 16px; }
+.label { font-family: var(--display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.panel { display: grid; gap: 12px; padding: 16px; border: 1.5px solid var(--ink); border-radius: 16px; background: var(--card); min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 14px; border: 2px solid var(--ink); border-radius: 999px; background: var(--ink); color: #FFF; font-weight: 700; font-size: 0.82rem; text-decoration: none; white-space: nowrap; }
+.btn:hover { background: var(--approve); }
+.btn.ghost { background: var(--card); color: var(--ink); }
+.btn.ghost:hover { background: var(--soft); }
+.btn.sm { min-height: 30px; padding: 0 11px; font-size: 0.76rem; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { min-height: 32px; padding: 0 12px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--card); font-family: var(--display); font-weight: 600; font-size: 0.82rem; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: #FFF; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { padding: 12px 14px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--card); }
+.stat b { display: block; font-family: var(--display); font-size: 1.5rem; }
+.pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 999px; font-family: var(--display); font-weight: 600; font-size: 0.72rem; background: var(--soft); white-space: nowrap; }
+.pill.q { background: var(--sky); } .pill.att { background: var(--error-soft); color: var(--error); border-color: var(--error); }
+.pill.ok { background: var(--approve); color: #FFF; } .pill.auto { background: var(--butter-soft); }
+.items { display: grid; gap: 10px; }
+.item { display: grid; gap: 8px; padding: 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); }
+.item .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.78rem; color: var(--muted); }
+.item .text { font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; }
+.item .reply { padding: 8px 10px; border-left: 3px solid var(--blue); background: var(--bg); font-size: 0.85rem; white-space: pre-wrap; }
+.item .err { padding: 8px 10px; border-radius: 8px; background: var(--error-soft); color: var(--error); font-size: 0.8rem; }
+.item .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.composer { display: grid; gap: 6px; }
+textarea, input[type=text], input[type=password], input[type=number], select { width: 100%; min-height: 38px; padding: 8px 10px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--bg); }
+textarea { min-height: 64px; resize: vertical; }
+.empty { padding: 28px 16px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; color: var(--muted); }
+.notice { padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--sky); font-size: 0.85rem; }
+.notice.warn { background: var(--butter-soft); }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.f { display: grid; gap: 4px; min-width: 0; }
+.f.wide { grid-column: 1 / -1; }
+.rule { display: grid; grid-template-columns: 1fr 2fr auto; gap: 6px; align-items: start; }
+@media (max-width: 560px) { .rule { grid-template-columns: 1fr; } }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: #FFF; font-size: 0.85rem; z-index: 50; }
+.gate { max-width: 420px; margin: 12vh auto 0; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><b>Sr. Post</b><span id="who">Caixa de entrada</span></div>
+  <div class="tabs" id="nav" hidden>
+    <button type="button" id="back" class="btn ghost sm">Voltar</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section class="panel gate" id="gate" hidden>
+    <h2>Caixa de entrada do time</h2>
+    <p class="muted">Entre com a chave de acesso do painel.</p>
+    <form id="gateForm" class="composer">
+      <input type="password" id="gateKey" autocomplete="off" placeholder="Chave do painel" aria-label="Chave do painel">
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <div class="head" style="margin-bottom:12px">
+      <div>
+        <h1>Comentários e mensagens</h1>
+        <p class="muted" id="sub">O que precisa de resposta fica aqui. Emoji e elogio curto o Sr. Post responde sozinho.</p>
+      </div>
+      <select id="clientSel" hidden aria-label="Cliente"></select>
+    </div>
+
+    <div id="notices" class="items" style="margin-bottom:12px"></div>
+
+    <div class="stats" style="margin-bottom:14px">
+      <div class="stat"><span class="label">Esperando você</span><b id="stPending">0</b></div>
+      <div class="stat"><span class="label">Respondidos sozinhos (7 dias)</span><b id="stAuto">0</b></div>
+    </div>
+
+    <div class="head" style="margin-bottom:10px">
+      <div class="tabs" role="group" aria-label="Filtro">
+        <button type="button" data-f="pending" aria-pressed="true">Para responder</button>
+        <button type="button" data-f="auto_replied" aria-pressed="false">Respondidos sozinhos</button>
+        <button type="button" data-f="replied" aria-pressed="false">Respondidos por você</button>
+        <button type="button" data-f="all" aria-pressed="false">Todos</button>
+      </div>
+      <button type="button" class="btn ghost sm" id="openRules">Regras automáticas</button>
+    </div>
+
+    <div id="items" class="items"></div>
+
+    <section class="panel" id="rules" hidden style="margin-top:16px">
+      <div class="head"><h2>Regras automáticas</h2><button type="button" class="btn ghost sm" id="closeRules">Fechar</button></div>
+      <p class="muted">Sem inteligência artificial e sem custo por resposta. O Sr. Post só responde sozinho comentários novos, até o limite por dia. Pergunta, reclamação e o que ele não reconhece ficam aqui para uma pessoa.</p>
+      <form id="rulesForm" class="grid">
+        <label class="f wide"><span class="label">Respostas automáticas</span>
+          <select id="rEnabled"><option value="1">Ligadas</option><option value="0">Desligadas</option></select></label>
+        <label class="f"><span class="label">Comentário só com emoji</span>
+          <select id="rEmojiAct"><option value="reply">Responder</option><option value="ignore">Não responder</option></select></label>
+        <label class="f"><span class="label">Resposta para emoji</span><input type="text" id="rEmoji" maxlength="200"></label>
+        <label class="f"><span class="label">Elogio curto ("top", "amei")</span>
+          <select id="rPraiseAct"><option value="reply">Responder</option><option value="ignore">Não responder</option></select></label>
+        <label class="f"><span class="label">Resposta para elogio</span><input type="text" id="rPraise" maxlength="200"></label>
+        <label class="f"><span class="label">Limite de respostas automáticas por dia</span><input type="number" id="rCap" min="0" max="300"></label>
+        <div class="f wide">
+          <span class="label">Respostas prontas por palavra-chave</span>
+          <p class="muted" style="font-size:0.8rem">Ex.: palavras "link, site" respondem "O link está na bio!". Separe as palavras por vírgula.</p>
+          <div id="kwList" class="items"></div>
+          <div><button type="button" class="btn ghost sm" id="kwAdd">Adicionar palavra-chave</button></div>
+        </div>
+        <div class="f wide"><button class="btn" type="submit">Salvar regras</button></div>
+      </form>
+      <div id="webhookInfo" class="notice" hidden></div>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+  var API = ((window.SRPOST && window.SRPOST.api) || "").replace(/\/api$/, "/inbox");
+  var params = new URLSearchParams(location.search);
+  var ADMIN = params.get("time") === "1";
+  var S = { token: "", key: "", filter: "pending", clientId: params.get("cliente") || "", settings: null };
+  var CAT = { emoji: "Emoji", praise: "Elogio", question: "Pergunta", attention: "Atenção", mention: "Marcação", keyword: "Palavra-chave", other: "Comentário" };
+  var NET = { instagram: "Instagram", tiktok: "TikTok" };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === "text") n.textContent = attrs[k];
+      else if (k === "onclick") n.addEventListener("click", attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3500);
+  }
+  function when(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+  }
+  function api(method, path, body) {
+    var headers = { "content-type": "application/json" };
+    if (ADMIN) headers["x-admin-key"] = S.key; else headers["x-portal-token"] = S.token;
+    var q = ADMIN && S.clientId ? (path.indexOf("?") < 0 ? "?" : "&") + "client_id=" + encodeURIComponent(S.clientId) : "";
+    return fetch(API + (ADMIN ? "/admin" : "/portal") + path + q, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) {
+            if (r.status === 401 && ADMIN) { try { localStorage.removeItem("srpost.admin.key"); } catch (e) {} showGate(); }
+            throw new Error(j.message || "Não deu certo. Tente de novo.");
+          }
+          return j;
+        });
+      });
+  }
+
+  function renderNotices(sum, webhook) {
+    var box = $("notices"); box.textContent = "";
+    (sum.accounts || []).forEach(function (a) {
+      if (a.missing) box.appendChild(el("div", { class: "notice warn", text: NET[a.platform] + (a.username ? " @" + a.username : "") + ": " + a.missing }));
+    });
+    if (!(sum.accounts || []).length) box.appendChild(el("div", { class: "notice warn", text: "Nenhuma conta conectada ainda. Conecte o Instagram ou o TikTok na aba Agente do portal." }));
+    var errs = (sum.last_runs || []).filter(function (r) { return r.error; });
+    if (errs.length) box.appendChild(el("div", { class: "notice warn", text: "Última leitura de comentários falhou: " + errs[0].error }));
+    if (webhook) {
+      var w = $("webhookInfo"); w.hidden = false; w.textContent = "";
+      w.appendChild(el("span", { text: "Webhook da Meta (time): " + webhook.url }));
+    }
+  }
+
+  function renderItems(items) {
+    var box = $("items"); box.textContent = "";
+    if (!items.length) {
+      box.appendChild(el("div", { class: "empty", text: S.filter === "pending" ? "Nada esperando resposta. O Sr. Post confere os comentários a cada 2 minutos." : "Nada por aqui ainda." }));
+      return;
+    }
+    items.forEach(function (it) {
+      var catCls = it.category === "question" ? "pill q" : it.category === "attention" ? "pill att" : "pill";
+      var status = it.status === "auto_replied" ? el("span", { class: "pill auto", text: "Respondido sozinho" })
+        : it.status === "replied" ? el("span", { class: "pill ok", text: "Respondido" })
+        : it.status === "done" ? el("span", { class: "pill", text: "Resolvido" })
+        : it.status === "hidden" ? el("span", { class: "pill", text: "Oculto" })
+        : it.status === "error" ? el("span", { class: "pill att", text: "Falhou" }) : null;
+      var meta = el("div", { class: "meta" }, [
+        el("b", { text: NET[it.platform] + (it.kind === "dm" ? " · Direct" : "") }),
+        el("span", { class: catCls, text: CAT[it.category] || "Comentário" }),
+        status,
+        el("span", { text: (it.author_name ? "@" + it.author_name + " · " : "") + when(it.created_at_platform) }),
+        ADMIN && it.clients ? el("span", { text: "· " + it.clients.name }) : null,
+        it.media_permalink ? el("a", { href: it.media_permalink, target: "_blank", rel: "noopener", text: "ver post" }) : null,
+      ]);
+      var card = el("article", { class: "item" }, [meta, el("div", { class: "text", text: it.text || "(sem texto)" })]);
+      if (it.media_caption) card.appendChild(el("div", { class: "muted", style: "font-size:0.76rem", text: "No post: " + it.media_caption }));
+      if (it.reply_text) card.appendChild(el("div", { class: "reply", text: "Resposta: " + it.reply_text }));
+      if (it.error && it.status === "error") card.appendChild(el("div", { class: "err", text: it.error }));
+      var acts = el("div", { class: "acts" });
+      if (it.status === "pending" || it.status === "error") {
+        var ta = el("textarea", { maxlength: "1000", placeholder: "Escreva a resposta pública", "aria-label": "Resposta" });
+        if (it.kind === "dm") ta.placeholder = "Escreva a mensagem (só até 24 h depois da mensagem da pessoa)";
+        var send = el("button", { class: "btn sm", type: "button", text: "Responder", onclick: function () {
+          if (!ta.value.trim()) { ta.focus(); return; }
+          send.disabled = true;
+          api("POST", "/reply", { id: it.id, text: ta.value.trim() }).then(function () { toast("Resposta enviada."); load(); })
+            .catch(function (e) { send.disabled = false; toast(e.message); });
+        } });
+        card.appendChild(el("div", { class: "composer" }, [ta]));
+        acts.appendChild(send);
+        acts.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Resolver sem responder", onclick: function () {
+          api("POST", "/resolve", { id: it.id }).then(function () { toast("Marcado como resolvido."); load(); }).catch(function (e) { toast(e.message); });
+        } }));
+        if (it.platform === "instagram" && it.kind === "comment") acts.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Ocultar comentário", onclick: function () {
+          api("POST", "/hide", { id: it.id }).then(function () { toast("Comentário oculto no Instagram."); load(); }).catch(function (e) { toast(e.message); });
+        } }));
+      } else if (it.status === "done") {
+        acts.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Reabrir", onclick: function () {
+          api("POST", "/reopen", { id: it.id }).then(function () { load(); }).catch(function (e) { toast(e.message); });
+        } }));
+      }
+      if (acts.childNodes.length) card.appendChild(acts);
+      box.appendChild(card);
+    });
+  }
+
+  function load() {
+    return api("GET", "/items?status=" + encodeURIComponent(S.filter)).then(function (j) {
+      $("app").hidden = false; $("gate").hidden = true;
+      if (j.client) $("who").textContent = j.client + " · Caixa de entrada";
+      if (ADMIN) {
+        var sel = $("clientSel"); sel.hidden = false;
+        if (!sel.options.length) {
+          sel.appendChild(el("option", { value: "", text: "Todos os clientes" }));
+          (j.clients || []).forEach(function (c) { sel.appendChild(el("option", { value: c.id, text: c.name })); });
+          sel.value = S.clientId;
+        }
+        $("openRules").hidden = !S.clientId;
+      }
+      $("stPending").textContent = j.summary.pending;
+      $("stAuto").textContent = j.summary.auto_replied_7d;
+      renderNotices(j.summary, j.webhook);
+      renderItems(j.items || []);
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  // ---------- Regras ----------
+  function kwRow(rule) {
+    var kw = el("input", { type: "text", placeholder: "palavras, separadas por vírgula", "aria-label": "Palavras-chave" });
+    var rp = el("input", { type: "text", placeholder: "resposta", maxlength: "500", "aria-label": "Resposta" });
+    kw.value = (rule.keywords || []).join(", "); rp.value = rule.reply || "";
+    var row = el("div", { class: "rule" }, [kw, rp]);
+    row.appendChild(el("button", { class: "btn ghost sm", type: "button", text: "Remover", onclick: function () { row.remove(); } }));
+    $("kwList").appendChild(row);
+  }
+  function openRules() {
+    api("GET", "/settings").then(function (j) {
+      var s = j.settings; S.settings = s;
+      $("rEnabled").value = s.auto_enabled ? "1" : "0";
+      $("rEmojiAct").value = s.emoji_action; $("rEmoji").value = s.emoji_reply;
+      $("rPraiseAct").value = s.praise_action; $("rPraise").value = s.praise_reply;
+      $("rCap").value = s.daily_cap;
+      $("kwList").textContent = "";
+      (s.keyword_rules || []).forEach(kwRow);
+      $("rules").hidden = false;
+      $("rules").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (e) { toast(e.message); });
+  }
+  $("openRules").addEventListener("click", openRules);
+  $("closeRules").addEventListener("click", function () { $("rules").hidden = true; });
+  $("kwAdd").addEventListener("click", function () { kwRow({}); });
+  $("rulesForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var rules = [].map.call($("kwList").children, function (row) {
+      var inp = row.querySelectorAll("input");
+      return { keywords: inp[0].value.split(",").map(function (s) { return s.trim(); }).filter(Boolean), reply: inp[1].value.trim() };
+    }).filter(function (r) { return r.keywords.length && r.reply; });
+    api("PATCH", "/settings", {
+      auto_enabled: $("rEnabled").value === "1", emoji_action: $("rEmojiAct").value, emoji_reply: $("rEmoji").value,
+      praise_action: $("rPraiseAct").value, praise_reply: $("rPraise").value, daily_cap: Number($("rCap").value) || 0,
+      keyword_rules: rules,
+    }).then(function () { toast("Regras salvas."); }).catch(function (e) { toast(e.message); });
+  });
+
+  [].forEach.call(document.querySelectorAll("[data-f]"), function (b) {
+    b.addEventListener("click", function () {
+      S.filter = b.getAttribute("data-f");
+      [].forEach.call(document.querySelectorAll("[data-f]"), function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      load();
+    });
+  });
+  $("clientSel").addEventListener("change", function () { S.clientId = this.value; $("rules").hidden = true; load(); });
+
+  // ---------- Entrada ----------
+  function showGate() { $("app").hidden = true; $("gate").hidden = false; $("gateKey").focus(); }
+  $("gateForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    S.key = $("gateKey").value.trim();
+    try { localStorage.setItem("srpost.admin.key", S.key); } catch (e) {}
+    $("gateKey").value = "";
+    load();
+  });
+  $("back").addEventListener("click", function () {
+    location.href = ADMIN ? "admin.html" : "index.html" + (S.token ? "#" + S.token : "");
+  });
+  $("nav").hidden = false;
+
+  if (ADMIN) {
+    try { S.key = localStorage.getItem("srpost.admin.key") || ""; } catch (e) {}
+    if (!S.key) showGate(); else load();
+  } else {
+    var fromHash = (location.hash || "").replace(/^#/, "").replace(/^k=/, "");
+    try { S.token = fromHash || localStorage.getItem("srpost.portal.token") || ""; } catch (e) { S.token = fromHash; }
+    if (!S.token) { $("app").hidden = false; renderItems([]); toast("Abra esta página pelo link do seu portal."); }
+    else load();
+  }
+  setInterval(function () { if (!$("app").hidden && $("rules").hidden) load(); }, 60000);
+})();
+</script>
+</body>
+</html>
