@@ -11,7 +11,7 @@ Atualizado em 14/11/2026, 23:57 (Brasília). Arquitetura: `docs/AGENTES.md`. Por
 | Função `chat` (diagnóstico, somente leitura) | v1 | Ok |
 | Função `render` (arte por template e story 9:16) | v2 | Byte a byte ok; story 4:5 vira 1080x1920 |
 | Migrações | 0001 a 0009 | Todas aplicadas |
-| Portal no GitHub Pages | `main` (até `cab4471`) | `agentes.html` e o painel de chaves ainda não estão na `main` |
+| Portal no GitHub Pages | `main` (até `a0172ae`, com a caixa de entrada do gestor) | `agentes.html` e o painel de chaves ainda não estão na `main` |
 
 Como publicar as funções: `ESBUILD=/caminho/esbuild ./supabase/functions/build.sh /tmp/dist` gera `api`, `agents` e `chat` como arquivo único; `render` vai como código-fonte. Depois conferir `/health` e o código publicado byte a byte.
 
@@ -29,8 +29,8 @@ Como publicar as funções: `ESBUILD=/caminho/esbuild ./supabase/functions/build
 
 ## Atenção
 
-- O Instagram do UTM Builder foi desconectado pelo portal às 23:43 e a reconexão das 23:45 não gravou a conta (sem erro registrado). Hoje não há conta real conectada: reconectar pelo portal do UTM Builder, aba Agente.
-- Os testes de hashtag e de perfil de referência (seção 4 do `META-CONFIG.md`) rodaram depois da desconexão: refazer com a conta reconectada.
+- O gestor reconectou o Instagram do UTM Builder às 23:45 para incluir comentários e mensagens (`instagram_manage_comments`, `instagram_manage_messages`). A conta está conectada com id novo `9fb6d675-9a6f-4502-a802-71805491ca8b`; o id antigo `3d672998-...` não existe mais.
+- Os testes de hashtag, perfil de referência e local por contêiner usaram o id antigo e rodaram sem token: refazer com o id novo.
 
 ## Próximo passo exato
 
@@ -40,7 +40,7 @@ Como publicar as funções: `ESBUILD=/caminho/esbuild ./supabase/functions/build
 
 ## Fila
 
-1. Botões "Caixa de entrada" no painel e no portal, apontando para `portal/caixa.html`, quando o gestor passar o link (recado do gestor; a função `inbox` e a página são dele).
+1. Botões "Caixa de entrada" (pedido do gestor; a caixa já está no ar: função `inbox` v2, tabelas `inbox_*`, cron `srpost-inbox`, `portal/caixa.html`, PR #4 na `main`). No portal, aba Agente ou topo: link para `caixa.html#<token do portal>`. No painel: link para `caixa.html?time=1` (usa a chave `srpost.admin.key` do localStorage). Não mexer em mais nada da caixa. Depois de cada merge, mandar ao gestor a lista do que testar em produção.
 2. Música nos Reels: busca no portal, `audio_configuration` no contêiner `REELS`; foto e story desativados com o motivo.
 3. Localização: aceitar link da Página do local; validar com a Graph quando houver o recurso; sem ele, só ID numérico e mensagem clara se a Meta recusar.
 4. Vídeo curto pelo gerador padrão (Reels), sem ffmpeg.
