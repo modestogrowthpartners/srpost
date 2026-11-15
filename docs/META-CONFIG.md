@@ -61,9 +61,7 @@ Publicação, música e localização não usam webhook. O publicador consulta o
 
 ## 4. Tendências: Instagram Public Content Access (opcional)
 
-- **Teste real em 15/11/2026** com o token atual:
-  - busca de hashtag (`GET /ig_hashtag_search?q=marketingdigital`): HTTP 403, `(#200) Provide valid app ID`;
-  - consulta de perfil público de referência (`business_discovery`): HTTP 403, mesma mensagem.
+- **Teste ainda não válido:** a busca de hashtag e a consulta de perfil de referência (`business_discovery`) devolveram `(#200) Provide valid app ID`, mas rodaram logo depois de a conta do UTM Builder ser desconectada pelo portal (sem token). Refazer com a conta reconectada.
 - **Requisito documentado da busca de hashtag:** App Review do recurso **Instagram Public Content Access** mais `instagram_basic`. Limite: 30 hashtags diferentes por conta a cada 7 dias.
 - **Sem o recurso**, o relatório semanal usa o que já funciona: desempenho dos posts do próprio cliente (`instagram_manage_insights`), formatos e hashtags que o cliente já usou, e músicas em alta (`/ig_audio`).
 - O motivo exato do erro em `business_discovery` não está claro (a mensagem fala de ID do app). A VERIFICAR depois da aprovação do recurso.

@@ -1,55 +1,48 @@
 # Estado do Sr. Post (para retomar sem perder contexto)
 
-Atualizado em 15/11/2026. Este arquivo diz o que está no ar, o que está pronto mas não testado de ponta a ponta, o que falta e o próximo passo. Detalhes de arquitetura: `docs/AGENTES.md`. Portal e publicação: `docs/PORTAL.md`. TikTok: `docs/TIKTOK.md`. Entrada do agente por API: `docs/AGENTE.md`.
+Atualizado em 14/11/2026, 23:57 (Brasília). Arquitetura: `docs/AGENTES.md`. Portal: `docs/PORTAL.md`. TikTok: `docs/TIKTOK.md`. Entrada por API: `docs/AGENTE.md`. Meta: `docs/META-CONFIG.md`.
 
-## Onde cada coisa roda
+## No ar (Supabase)
 
-| Peça | Onde | Observação |
+| Peça | Versão | Conferência |
 | --- | --- | --- |
-| Portal do cliente, painel do time, central de agentes | GitHub Pages, branch `main`, pasta `portal/` | Só vai ao ar depois do merge na `main` |
-| Função `api` | Supabase Edge Functions | Portal, painel, ingestão, Instagram, publicador (`/worker/tick`) |
-| Função `agents` | Supabase Edge Functions | Central de agentes, banco de pautas, chaves, motor (`/tick`) |
-| Função `chat` | Supabase Edge Functions | Chat de diagnóstico, somente leitura |
-| Função `render` | Supabase Edge Functions | Arte por template (imagem JPEG), sem chave externa |
-| Agendadores | pg_cron, a cada minuto | `srpost-worker` chama `api/worker/tick`; `srpost-agents` chama `agents/tick` |
-| Banco | Postgres do Supabase, migrações `supabase/migrations/0001` a `0008` | Todas aplicadas |
+| Função `api` (portal, painel, ingestão, Instagram, publicador) | v13 publicada às 23:5x | `/health` 200 e portal com token inválido 401. A conferência byte a byte foi interrompida no fim: refazer |
+| Função `agents` (central, banco de pautas, chaves, motor `/tick`) | v1 | Byte a byte ok; agendador sem erros |
+| Função `chat` (diagnóstico, somente leitura) | v1 | Ok |
+| Função `render` (arte por template e story 9:16) | v2 | Byte a byte ok; story 4:5 vira 1080x1920 |
+| Migrações | 0001 a 0009 | Todas aplicadas |
+| Portal no GitHub Pages | `main` (até `cab4471`) | `agentes.html` e o painel de chaves ainda não estão na `main` |
 
-### Como publicar as funções
+Como publicar as funções: `ESBUILD=/caminho/esbuild ./supabase/functions/build.sh /tmp/dist` gera `api`, `agents` e `chat` como arquivo único; `render` vai como código-fonte. Depois conferir `/health` e o código publicado byte a byte.
 
-O código-fonte fica em `supabase/functions/api/lib`. As funções `api`, `agents` e `chat` são publicadas como um arquivo só, gerado por `supabase/functions/build.sh` (esbuild; só remove comentários, mantém uma instrução por linha). O motivo: a ferramenta de publicação recebe o código inteiro numa chamada, e o código completo passa de 400 KB. Separadas, cada função fica entre 90 e 155 KB.
+## Pronto e testado
 
-```bash
-ESBUILD=/caminho/do/esbuild ./supabase/functions/build.sh /tmp/dist
-```
+- Publicação real no Instagram (foto e story) e ritmo por conta, isolamento entre clientes.
+- Story 9:16: rota de ajuste da `render` testada em produção.
+- Teste de ponta a ponta da central (`t5_agents.py`, cliente demo), parte 1 e 2: Novo agente, contas simuladas, execução até a fila, arte por template, aprovação no portal. Parado no meio da publicação por ordem do dono.
 
-Depois de publicar, conferir: `/health` de cada função e o código publicado byte a byte contra o arquivo gerado.
+## Pela metade (não publicado no portal)
 
-## Pronto e testado em produção
+- Story 9:16 no publicador (`api` v13): falta teste de ponta a ponta com story real.
+- Música nos Reels: confirmada com o token real (`/ig_audio`, em alta e busca, HTTP 200). Código não escrito.
+- Localização: busca por nome e link de Página pública exigem Page Public Metadata Access (pedido em `docs/META-CONFIG.md`). Código não escrito.
 
-- Portal: fila de aprovação, opções por criativo (story, legenda, música, local, com motivo quando a rede não aceita), andamento ao vivo, reconexão, visualização grande.
-- Publicação real no Instagram (`utmbuilder.com.br`): foto no feed. Story aprovado e agendado.
-- Ritmo por conta (intervalo, teto diário, pausa por suspeita de spam), histórico de tentativas, isolamento entre clientes.
-- Arte por template: a função `render` gera JPEG 1080x1350 e 1080x1920 em cerca de 0,3 s depois de aquecida.
+## Atenção
 
-## Pronto no código, publicado, ainda sem teste de ponta a ponta
+- O Instagram do UTM Builder foi desconectado pelo portal às 23:43 e a reconexão das 23:45 não gravou a conta (sem erro registrado). Hoje não há conta real conectada: reconectar pelo portal do UTM Builder, aba Agente.
+- Os testes de hashtag e de perfil de referência (seção 4 do `META-CONFIG.md`) rodaram depois da desconexão: refazer com a conta reconectada.
 
-- Motor dos agentes (planejar, roteiro, copy, mídia, aprovação, publicar), com eventos reais.
-- Central de agentes, assistente Novo agente, visão ao vivo, chat de diagnóstico (`portal/agentes.html`).
-- Banco de pautas (texto pronto, sem chave do Claude) e arte por template como gerador padrão.
-- Chaves e integrações: estado, onde colar, botão de testar (rotas em `agents`; tela em Configuração do painel).
-- Geração de texto pelo Claude e mídia pelo Higgsfield: código escrito e testado contra servidores falsos. Sem chave real.
+## Próximo passo exato
 
-## Falta (em ordem)
+1. Conferir a `api` v13 byte a byte contra `dist3/api/index.js` (gerado de novo com `build.sh`).
+2. Rodar `t5_agents.py` inteiro e o teste da interface (`t6_painel.js`); corrigir o que falhar.
+3. Abrir o PR (só `portal/`, `supabase/`, `docs/`), fazer o merge e conferir o Pages em produção.
 
-1. Teste de ponta a ponta pelo painel com cliente de demonstração e depois com o UTM Builder (banco de pautas sobre UTM, sem repetir tema).
-2. PR e merge na `main` a cada fase publicada e testada; conferir o Pages em produção.
-3. Vídeo curto pelo gerador padrão (Reels). A função não tem ffmpeg; o caminho em estudo é montar o MP4 a partir das artes, sem recodificar.
-4. Música em Reels pela API de áudio do Instagram: confirmar na documentação da Meta e com o token real antes de implementar.
-5. Localização por busca de nome ou link da Página.
-6. Comentários e mensagens diretas por regras, com caixa de entrada.
-7. Relatório semanal de tendências por cliente.
-8. TikTok: correções do adaptador conferidas com a documentação (pesquisa pronta em `docs/TIKTOK.md`), ainda não aplicadas no código.
+## Fila
 
-## Próximo passo
-
-Rodar `t5_agents` (roteiro de teste de ponta a ponta da central) contra produção com cliente de demonstração, corrigir o que falhar, abrir o PR e fazer o merge.
+1. Botões "Caixa de entrada" no painel e no portal, apontando para `portal/caixa.html`, quando o gestor passar o link (recado do gestor; a função `inbox` e a página são dele).
+2. Música nos Reels: busca no portal, `audio_configuration` no contêiner `REELS`; foto e story desativados com o motivo.
+3. Localização: aceitar link da Página do local; validar com a Graph quando houver o recurso; sem ele, só ID numérico e mensagem clara se a Meta recusar.
+4. Vídeo curto pelo gerador padrão (Reels), sem ffmpeg.
+5. Teste real no UTM Builder: story, foto, carrossel e Reels com legenda, local e música.
+6. Relatório semanal de tendências por cliente; correções do adaptador do TikTok.
