@@ -47,3 +47,4 @@ Como publicar as funções: `ESBUILD=/caminho/esbuild ./supabase/functions/build
 4. Vídeo curto pelo gerador padrão (Reels), sem ffmpeg.
 5. Teste real no UTM Builder: story, foto, carrossel e Reels com legenda, local e música.
 6. Relatório semanal de tendências por cliente; correções do adaptador do TikTok.
+7. Envio em lote pelo painel (pedido do dono, sem geração por IA): subir um ZIP com vários criativos prontos (imagens e vídeos). A legenda é opcional, por arquivo `.txt` com o mesmo nome da mídia ou por uma planilha CSV. Cada criativo entra direto na fila de aprovação do cliente, com a data e a hora de publicação escolhidas pelo time.
